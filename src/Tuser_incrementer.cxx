@@ -454,7 +454,7 @@ void Tuser_incrementer::create_all_user_incrementers(vector<string> & vector_of_
 //###########################################################################
 bool Tuser_incrementer::create_one_user_incrementer(string name_of_description )
 {
-    cerr << __func__ << " " << name_of_description << endl;
+//    cerr << "Func. : " << __func__ << " " << name_of_description << endl;
 
 //   static int level_of_nesting ;
 //

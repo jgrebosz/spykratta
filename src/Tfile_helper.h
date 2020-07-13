@@ -50,18 +50,16 @@ namespace File_helper
 
 /** This function searches (in the given file) a keyword and then reads the
 value which follows it. Then returns this value as the result.  */
-double find_in_file(typ_strumienia& s, string slowo) throw(
-    Tno_keyword_exception, Treading_value_exception);
+double find_in_file(typ_strumienia& s, string slowo);
 
 /** find a keyword, - just for positioning cursor  */
-void spot_in_file(typ_strumienia& s, string slowo)throw(
-    Tno_keyword_exception);
+void spot_in_file(typ_strumienia& s, string slowo);
 /** find in the given directory the files which names contain a filter substring */
 vector<string> find_files_in_directory(string dir, string filter);
 
-void repair_the_stream(typ_strumienia& s)  ;
+void repair_the_stream(typ_strumienia& s);
 
-};
+}
 /////////////////////////////////////////////////////////////////////////
 istream & zjedz(istream & plik);
 

@@ -46,7 +46,7 @@ public:
      * event element.
      */
     virtual void Clear(string t = "");
-    virtual void SetValid(bool t) { } ;
+    virtual void SetValid(bool /*t*/) { }
     
     void save_as_semitree(std::string);
     ofstream plik;
@@ -54,10 +54,12 @@ public:
     // december 2001 experiment
     int begin_for_zeroing ;   //!
 
+    #if 0
     int
     //............................
     // for the new style of object calculation we define
     // this once more here
+
     mw11_x_left, mw11_x_right, mw11_y_up, mw11_y_down, mw11_anode,
                  mw21_x_left, mw21_x_right, mw21_y_up, mw21_y_down, mw21_anode,
                  mw22_x_left, mw22_x_right, mw22_y_up, mw22_y_down, mw22_anode,
@@ -118,9 +120,9 @@ public:
 #endif // MUSIC42_USED
 #endif // MUSICBIG_USED
 
-                 frs_synchro_data;
+           int       frs_synchro_data;
 
-
+#endif // 0
 
     // target scintillator
     int target_scintillator_x ;
@@ -278,65 +280,49 @@ public:
 #endif
 
 //###################################### EXOTIC ##############
-#ifdef NR_OF_EXOTIC_MODULES
-    int exotic_data[NR_OF_EXOTIC_MODULES][NR_OF_EXOTIC_STRIPES_X][NR_OF_EXOTIC_SAMPLES];
-    int exotic_data_fired[NR_OF_EXOTIC_MODULES];
 
-    int v785[32];
-
-#endif
 
 //##################################### PISOLO ###############
-#if CURRENT_EXPERIMENT_TYPE==PISOLO2_EXPERIMENT
-
-    int pisolo_mcp01_x, pisolo_mcp01_y;    // micro channel plate detectors measuring position
-    int pisolo_mcp02_x, pisolo_mcp02_y;
-
-    int pisolo_si_target_en;   // EN is the energy released in the Si detector (near the target)
-
-    int pisolo_deltaE[2];       // ionisation chamber
-    int pisolo_dE_res;      // residual energy released in the Ionisation Chamber (normally zero)
-    int pisolo_si_final;   // final energy, wher the ion stops
-    int pisolo_tof1, pisolo_tof2, pisolo_tof3;
-
-//   MONLR and MONUD are the two pairs of monitors (left-right)
-//     and (up-down). Each pair into one ADC input.
-    int pisolo_mon_lr;
-    int pisolo_mon_ud;
-
-#endif
 
 
 
-#if CURRENT_EXPERIMENT_TYPE==PRISMA_EXPERIMENT
-    int prisma_mcp_x;       //
-    int prisma_mcp_y;       //
-    int prisma_mcp_u;       //
 
-    int thePrismaDataMap[240 + 50] ; // +50 for security
-#endif
+
 
 
 
 #ifdef HECTOR_PRESENT
 
     // data for Hector
-    int16_t hector_tdc[32];
-    int16_t hector_adc[32];
+    int16_t hector_tdc[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS];
+    int16_t hector_adc[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS];
+    // data for phoswitch Hector
+    int16_t phoswich_tdc[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS];
+    int16_t phoswich_adc[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS];
+
+
+
+    int32_t digitizer_data[NR_DIGITIZERS * 3*16];    //(96 because= 32 time + 32Fast + 32 Slow)
+    double digitizer_double_data[NR_DIGITIZERS* 3*16];
+
     //int16_t hector_to_vme_synchro_signal;
 #endif
 
 
 #ifdef KRATTA_PRESENT
     int16_t kratta[KRATTA_NR_OF_CRYSTALS][3+3+3] ;   // 0,1,2 - signals, 3,4,5 - pedestals, 6,7,8 - times
+    int16_t plastic[KRATTA_NR_OF_PLASTICS]; // [2] ;   // 0 = time   (1 =energy not used)
+    int32_t plastic_scalers[KRATTA_NR_OF_PLASTICS];
+    int silicon[NR_OF_SILICONS][3]; // amplitude, time30, time80
+
 #endif
 
     int end_for_zeroing ;  //! dummy member to recognize end for memset function
 
-    // below, because this shoul not be zeroed
+    // below are fields, which should not be zeroed
 
 
 public:
-    //    ClassDef(TIFJEvent,1)
+
 };
 #endif //TEBEVENT_H

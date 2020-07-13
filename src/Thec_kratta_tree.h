@@ -38,27 +38,20 @@ class Thec_kratta_tree : public Tfrs_element
 
   std::string   root_filename;
 
-  //******************
-//   int  event_mult ;
+  int16_t ( TIFJEvent::*hector_tdc_data_ptr )[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS];
+  int16_t ( TIFJEvent::*hector_adc_data_ptr )[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS];
+  int16_t ( TIFJEvent::*phoswich_tdc_data_ptr )[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS];
+  int16_t ( TIFJEvent::*phoswich_adc_data_ptr )[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS];
 
-
-//   int16_t hector_tdc[32];
-// 	int16_t hector_adc[32];
-// 	
-  //int16_t kratta[KRATTA_NR_OF_CRYSTALS][9] ;    // 3 signals + 3 pedestals + 3 times
-
-
-  int16_t ( TIFJEvent::*hector_tdc_data_ptr )[32];
-  int16_t ( TIFJEvent::*hector_adc_data_ptr )[32];
   int16_t ( TIFJEvent::*kratta_data_ptr )[KRATTA_NR_OF_CRYSTALS][9];
+  int16_t ( TIFJEvent::*plastic_data_ptr )[KRATTA_NR_OF_PLASTICS];
 
- 
+  struct {
+         int16_t  hector_adc[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS];
+         int16_t  hector_tdc[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS];
+         int16_t  phoswich_adc[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS];
+         int16_t  phoswich_tdc[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS];
 
-    struct {
-
-		int16_t  hector_adc[32];	
-		 int16_t  hector_tdc[32];	
-		
 		 int16_t  kratta_s0[KRATTA_NR_OF_CRYSTALS];
 		 int16_t  kratta_s1[KRATTA_NR_OF_CRYSTALS];
 		 int16_t  kratta_s2[KRATTA_NR_OF_CRYSTALS];
@@ -72,50 +65,20 @@ class Thec_kratta_tree : public Tfrs_element
 		 int16_t  kratta_t2[KRATTA_NR_OF_CRYSTALS];
 		 
 
-		 // 			int
-//     ppacA_x_left,			// as multiwire
-//     ppacA_x_right,
-//     ppacA_y_up  ,
-//     ppacA_y_down,
-//     ppacA_cathode,
-// 
-//     ppacB_x_left,		// as multiwire
-//     ppacB_x_right,
-//     ppacB_y_up  ,
-//     ppacB_y_down,
-//     ppacB_cathode;
-// 
-//     int siC_time;
-//     int siC_energy;
-//     int siC_plp;
-//     int siC_rise;
-//     int siC_fast;
-//     int siC_slow;
-//     int siC_rise30;
-//     int siC_rise80;
-//     // D
-//     int siD_time;
-//     int siD_energy;
-//     int siD_plp;
-//     int siD_rise;
-//     int siD_fast;
-//     int siD_slow;
-//     int siD_rise30;
-//     int siD_rise80;
-//     // E
-//     int siE_time;
-//     int siE_energy;
-//     int siE_plp;
-//     int siE_fast;
-//     int siE_slow;
+         int16_t  plastic_time[KRATTA_NR_OF_PLASTICS];
+         //int16_t  plastic_energy[KRATTA_NR_OF_PLASTICS];
+
 } store ;
 
 
 public:
   Thec_kratta_tree(std::string who,
-					int16_t ( TIFJEvent::*hector_tdc_data_ptr_a )[32],
-					int16_t ( TIFJEvent::*hector_adc_data_ptr_a )[32],
-	           int16_t ( TIFJEvent::*kratta_data_ptr_a ) [KRATTA_NR_OF_CRYSTALS][9]
+                    int16_t ( TIFJEvent::*hector_tdc_data_ptr_a )[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS],
+                    int16_t ( TIFJEvent::*hector_adc_data_ptr_a )[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS],
+                    int16_t ( TIFJEvent::*phoswich_tdc_data_ptr_a )[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS],
+                    int16_t ( TIFJEvent::*phoswich_adc_data_ptr_a )[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS],
+                    int16_t ( TIFJEvent::*kratta_data_ptr_a ) [KRATTA_NR_OF_CRYSTALS][9],
+                    int16_t ( TIFJEvent::*plastic_data_ptr_a ) [KRATTA_NR_OF_PLASTICS]
 	     );
 
   void analyse_current_event();

@@ -59,7 +59,6 @@ void Tuser_spectrum::create_the_spectrum()
     {
         spec_ptr = new spectrum_1D(
             sname,
-            sname,
             desc.give_bins_x(), desc.give_beg_x(), desc.give_end_x(),
             folder, "",
             "To check incrementers - go to the User Defined Spectra manager");
@@ -67,11 +66,10 @@ void Tuser_spectrum::create_the_spectrum()
     else
     {
         spec_ptr = new spectrum_2D(sname,
-                                   sname,
                                    desc.give_bins_x(), desc.give_beg_x(), desc.give_end_x(),
                                    desc.give_bins_y(), desc.give_beg_y(), desc.give_end_y(),
                                    folder, "",
-                                   "To check incrementers - go to the User Defined Spectra manager");
+                                   "To check incrementers in a user spectrum - go to the User Defined Spectra manager");
     }
     // owner->remember_user_spectrum(spec_ptr) ;
     // NO, the funcion which calls this funciton will take care

@@ -25,7 +25,7 @@ using namespace std ;
 class Cspectra_descriptor
 {
     string name ;
-    string notice;
+    string notice_txt;
 public:
 
     Cspectra_descriptor(const string fname = "spectra/descriptions.txt")
@@ -37,15 +37,25 @@ public:
         plik.close();
     }
     //--------------------------- for 1D spectra
-#define WHERE   cout << __FILE__<< ", line " << __LINE__ << endl;;
-    void add_entry(const string spec_name, double bin_x, double first_x, double last_x, const string notice, const string list_of_incrementers)
+#define WHERE   cout << __FILE__<< ", line " << __LINE__ << endl;
+
+    void add_entry(const string spec_name, double bin_x, double first_x, double last_x,
+                   const string notice_arg, const string list_of_incrementers)
     {
 //  cout << "linia " << __LINE__ << endl;;
+        notice_txt = notice_arg;
+        if(list_of_incrementers == "no incrementers known"
+                || list_of_incrementers.empty())
+        {
+            cout << "Widmo " << spec_name << " nie ma opisu inkrementorow"
+                 << endl;
+            cout << spec_name << endl;
+        }
         ofstream plik(name.c_str(), ios::app);
 
         plik << spec_name << "\n" << bin_x
              << "\t" << first_x << "\t" << last_x
-             << "\n{\n" << notice << "\n}"
+             << "\n{\n" << notice_arg << "\n}"
              << "\n{\n"
              << list_of_incrementers
              << "\n}" << endl;
@@ -54,8 +64,17 @@ public:
     //---------------------------  for 2D spectra
     void add_entry(const string spec_name,
                    int bin_x, double first_x, double last_x,
-                   int bin_y, double first_y, double last_y, const string notice, const string list_of_incrementers)
+                   int bin_y, double first_y, double last_y, const string notice,
+                   const string list_of_incrementers)
     {
+        if(list_of_incrementers == "2D incrementers"
+                || list_of_incrementers.empty() )
+        {
+            cout << "Widmo " << spec_name << " nie ma opisu inkrementorow"
+                 << endl;
+            cout << spec_name << endl;
+        }
+
         ofstream plik(name.c_str(), ios::app);
         plik << spec_name << "\n"
              << bin_x << "\t" << first_x << "\t" << last_x
@@ -70,7 +89,7 @@ public:
     }
     void add_notice(const string txt)
     {
-        notice += txt ;
+        notice_txt += txt ;
     }
 
 };
@@ -134,8 +153,7 @@ public:
     virtual void reset_incrementers() = 0 ;
 
     virtual void increment_yourself()
-    {}
-    ;  // = 0;
+    {}   // = 0;
     TH1* give_root_spectrum_pointer()
     {
         return  ptr_root_spectrum;
@@ -169,6 +187,10 @@ public:
     virtual void save_to_disk() = 0 ;
     virtual void manually_increment(int value) = 0 ;
     virtual void manually_increment(double value) = 0 ;
+    void zeroing()
+    {
+        ptr_root_spectrum->Reset();
+    }
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -192,8 +214,10 @@ protected:
 public:
 
     //-------------------------------------------
-    spectrum_1D(const string name_root, const string title, int h_one, double h_two, double h_three,
-                const string folder = "", const string note = "", const string list_incrementers = "no incrementers known");
+    spectrum_1D(const string name_root, int h_one, double h_two, double h_three,
+                const string folder = "",
+                const string note = "",
+                const string list_incrementers = "no incrementers known");
 
     spectrum_1D() ;  // default for contitional spectra
 
@@ -230,6 +254,20 @@ public:
         ptr_root_spectrum->Fill(value);     //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
         //statistics();
     }
+    void manually_increment(long long value)
+    {
+        //              cout << "just before incrementation " << ptr_root_spectrum->GetName()
+        //                    << " with " << value << endl ;
+        ptr_root_spectrum->Fill(value);     //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+        //statistics();
+    }
+    void manually_increment(long value)
+    {
+        //              cout << "just before incrementation " << ptr_root_spectrum->GetName()
+        //                    << " with " << value << endl ;
+        ptr_root_spectrum->Fill(value);     //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+        //statistics();
+    }
     // -------------------------------------------
     void manually_increment(double value)
     {
@@ -250,9 +288,10 @@ public:
     pen writing on the paper band */
     void scroll_left_by_n_bins(int bins);
     /** No descriptions */
-    void create(const string name_root, const string  title, int nr_of_bins,
+    void create(const string name_root, int nr_of_bins,
                 double first_channel,
-                double last_channel, const string folder, const string  note, const string list_incrementers);
+                double last_channel, const string folder, const string  note,
+                const string list_incrementers);
     /** for continuation option */
     void read_from_disk();
     /** No descriptions */
@@ -284,10 +323,11 @@ protected:
 public:
 
     //-------------------------------------------
-    spectrum_2D(const string  name_root, const string  title,
+    spectrum_2D(const string  name_root,
                 int nr_of_bins_x, double first_channel_x, double last_channel_x,
                 int nr_of_bins_y, double first_channel_y, double last_channel_y,
-                const string  folder = "", const string  note = "", const string list_incrementers = "2D incrementers");
+                const string  folder = "", const string  note = "",
+                const string list_incrementers = "2D incrementers");
 
     // D'TOR-------------------------------------
     ~spectrum_2D();
@@ -320,7 +360,7 @@ public:
     }
 
     //------------------------------------------
-    void manually_increment(int value)
+    void manually_increment(int /*value*/)
     {
         cout << "Fuction: manually_increment for matrix must have 2 arguments...  press any key" << endl ;
         int liczba ;
@@ -328,6 +368,20 @@ public:
     }
     //------------------------------------------
     void manually_increment(int x_value, int y_value)
+    {
+        // cout << "spectrum_2D:: manually_increment" << endl;
+        ptr_root_spectrum->Fill(x_value, y_value);      //@@@@@@@@@@@@@@@@@@
+        //statistics();
+    }
+    //------------------------------------------
+    void manually_increment(long x_value, long y_value)
+    {
+        // cout << "spectrum_2D:: manually_increment" << endl;
+        ptr_root_spectrum->Fill(x_value, y_value);      //@@@@@@@@@@@@@@@@@@
+        //statistics();
+    }
+    //------------------------------------------
+    void manually_increment(long long x_value, long long y_value)
     {
         // cout << "spectrum_2D:: manually_increment" << endl;
         ptr_root_spectrum->Fill(x_value, y_value);      //@@@@@@@@@@@@@@@@@@
@@ -342,7 +396,7 @@ public:
 
     void read_from_disk();
     /** No descriptions */
-    void manually_increment_by(int x, int y, int value);
+    void manually_increment_by(double x, double y, int value);
 };
 ///////////////////////////////////////////////////////////////////////////////
 #endif // SPECTRUM_H

@@ -32,20 +32,20 @@ void Tpisolo_tof::create_my_spectra()
 
     //-----------
     string name = name_of_this_element + "_tof1_raw";
-    spec_tof1_raw = new spectrum_1D(name, name,
+    spec_tof1_raw = new spectrum_1D(name,
                                     8191, 1, 8192,
                                     folder, "", name_of_this_element + "_tof1_raw");
     frs_spectra_ptr->push_back(spec_tof1_raw) ;
 
     //-----------
     name = name_of_this_element + "_tof2_raw";
-    spec_tof2_raw = new spectrum_1D(name, name,
+    spec_tof2_raw = new spectrum_1D(name,
                                     8191, 1, 8192,
                                     folder, "", name_of_this_element + "_tof2_raw");
     frs_spectra_ptr->push_back(spec_tof2_raw) ;
     //-----------
     name = name_of_this_element + "_tof3_raw";
-    spec_tof3_raw = new spectrum_1D(name, name,
+    spec_tof3_raw = new spectrum_1D(name,
                                     8191, 1, 8192,
                                     folder, "", name_of_this_element + "_tof3_raw");
     frs_spectra_ptr->push_back(spec_tof3_raw) ;
@@ -53,20 +53,20 @@ void Tpisolo_tof::create_my_spectra()
     // ==== cal =====
     //-----------
     name = name_of_this_element + "_tof1_cal";
-    spec_tof1_cal = new spectrum_1D(name, name,
+    spec_tof1_cal = new spectrum_1D(name,
                                     8191, 1, 8192,
                                     folder, "", name_of_this_element + "_tof1_cal");
     frs_spectra_ptr->push_back(spec_tof1_cal) ;
 
     //-----------
     name = name_of_this_element + "_tof2_cal";
-    spec_tof2_cal = new spectrum_1D(name, name,
+    spec_tof2_cal = new spectrum_1D(name,
                                     8191, 1, 8192,
                                     folder, "", name_of_this_element + "_tof2_cal");
     frs_spectra_ptr->push_back(spec_tof2_cal) ;
     //-----------
     name = name_of_this_element + "_tof3_cal";
-    spec_tof3_cal = new spectrum_1D(name, name,
+    spec_tof3_cal = new spectrum_1D(name,
                                     8191, 1, 8192,
                                     folder, "", name_of_this_element + "_tof3_cal");
     frs_spectra_ptr->push_back(spec_tof3_cal) ;
@@ -78,7 +78,6 @@ void Tpisolo_tof::create_my_spectra()
     name =  name_of_this_element + "_xy"  ;
 
       spec_xy = new spectrum_2D( name,
-                                 name,
                                  400, -150, 150,
                                  400, -150, 150,
                                  folder, "",

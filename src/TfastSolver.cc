@@ -45,7 +45,7 @@ TfastSolver::TfastSolver(string myname,   double b1, double b2): Tfrs_element(my
 /// ratio in the configuration file                         ///
 /// Fake values are anyway set!                             ///
 ///////////////////////////////////////////////////////////////
-TfastSolver::TfastSolver(string myname,   char* name): Tfrs_element(myname)
+TfastSolver::TfastSolver(string myname,   char* /*name*/): Tfrs_element(myname)
 {
     theFile = NULL;
     initial_zeroing_of_pointers();
@@ -63,7 +63,7 @@ TfastSolver::TfastSolver(string myname,   char* name): Tfrs_element(myname)
 ////////////////////////////////////////////////////////////////
 /// Constructor 4: configuration file, but ratio is provided ///
 ////////////////////////////////////////////////////////////////
-TfastSolver::TfastSolver(string myname,   char* name, double ratio): Tfrs_element(myname)
+TfastSolver::TfastSolver(string myname,   char* /*name*/, double ratio): Tfrs_element(myname)
 {
     theFile = NULL;
     initial_zeroing_of_pointers();

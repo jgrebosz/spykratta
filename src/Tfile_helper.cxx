@@ -30,7 +30,7 @@ extern TIFJAnalysis *RisingAnalysis_ptr;
 ../sample_lmd/70MeV_Mylar120um_run0577.lmd*/
 //****************************************************************************
 /** No descriptions */
-void File_helper::spot_in_file(typ_strumienia& s, string slowo) throw(Tno_keyword_exception)
+void File_helper::spot_in_file(typ_strumienia& s, string slowo)
 {
     if(!s.good())
     {
@@ -82,8 +82,7 @@ void File_helper::spot_in_file(typ_strumienia& s, string slowo) throw(Tno_keywor
 //****************************************************************************
 /** This function searches (in the given file) a keyword and then reads the
     value which follows it. Then returns this value as the result.  */
-double File_helper::find_in_file(typ_strumienia& s, string slowo) throw(
-    Tno_keyword_exception, Treading_value_exception)
+double File_helper::find_in_file(typ_strumienia& s, string slowo)
 {
 
     s.seekg(0) ;    // rewind
@@ -106,7 +105,7 @@ double File_helper::find_in_file(typ_strumienia& s, string slowo) throw(
         //transform(word.begin(), word.end(), word.begin(), tolower);
         for(unsigned i = 0 ; i < word.size() ; i++) word[i] = tolower(word[i]);
 
-//         cout << "found word " << word << endl ;
+        // cout << "found word " << word << endl ;
         if(word == slowo) break ;
     }
     //----------------
@@ -271,7 +270,7 @@ bool read_banana(string gate_name,  TjurekPolyCond   *polygon[])
 
     TjurekPolyCond *pointer =  RisingAnalysis_ptr -> give_ptr_to_polygon(gate_name) ;
 
-    if(pointer != 0)
+    if(pointer != nullptr)
     {
         // such a root gate already exist in root memory,
         // so we have to delete it ???? ->> why ? some other user spectrum  could make it !
@@ -301,7 +300,7 @@ bool read_banana(string gate_name,  TjurekPolyCond   *polygon[])
         (*polygon)->Enable() ;
         RisingAnalysis_ptr->AddAnalysisCondition(*polygon);
 
-        //break ; // not esisting
+        //break ; // not existing yet
     }
 
     // }while(1) ;

@@ -130,7 +130,7 @@ void T32_signal_module<nr_of_channels>::create_my_spectra()
         if(flag_produce_signal_spectra)
         {
 //      cout << "creating spectgra for channel nr " << i   << " for [" << name << "] while nr_of_channels = " << nr_of_channels << endl;
-            spec_chan[i] = new spectrum_1D(name, name,
+            spec_chan[i] = new spectrum_1D(name,
                                            4095, 1, 4096,
                                            folder, "", noraw);
             frs_spectra_ptr->push_back(spec_chan[i]) ;
@@ -140,7 +140,7 @@ void T32_signal_module<nr_of_channels>::create_my_spectra()
                 string name_cal = name + "_cal";
                 named_pointer[name_cal ] = Tnamed_pointer(&signal_data_cal[i], 0, this) ;
 
-                spec_chan_cal[i] = new spectrum_1D(name_cal, name_cal,
+                spec_chan_cal[i] = new spectrum_1D(name_cal,
                                                    4095, 1, 4096,
                                                    folder, "", noraw);
                 frs_spectra_ptr->push_back(spec_chan_cal[i]) ;
@@ -151,8 +151,7 @@ void T32_signal_module<nr_of_channels>::create_my_spectra()
     if(flag_produce_fan_spectrum)
     {
         spec_fan = new spectrum_1D(
-            name_of_this_element + "_fan",
-            name_of_this_element + "_fan",
+            name_of_this_element + "_fan",           
             nr_of_channels, 0, nr_of_channels,
             folder, "", noraw);
         frs_spectra_ptr->push_back(spec_fan) ;

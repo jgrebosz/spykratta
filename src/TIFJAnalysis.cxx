@@ -50,10 +50,12 @@ using namespace std;
 #include "Tuser_incrementer.h"
 #include "Tfile_helper.h"
 
+//#include "paths.h"
+
 // Joern Adamczewski suggest to definie it here and refer as extern
 // from MainUserAnalysis
 //    (it was other way round before)
-bool go4_gui_mode;  // Take does not want to save *.spc files in Go4 mode
+// bool go4_gui_mode;  // Take does not want to save *.spc files in Go4 mode
 
 //#define COTO  cout<<" I am at line  "<<__LINE__<< endl;
 #define ANYKEY { int nic; cout << "press 1 and Enter " << endl; cin >> nic;}
@@ -67,39 +69,39 @@ extern unsigned int starting_event; // global to be set in main and accessed fro
 //****************************************************************************
 TIFJAnalysis::TIFJAnalysis()
     :
-    //fxUserFile(0),
-    fxMbsEvent(0), fxEbEvent(0)      // ,fxCaliEvent(0)
-#ifdef GSI_STUFF
+      //fxUserFile(0),
+      fxMbsEvent(nullptr), fxEbEvent(nullptr)      // ,fxCaliEvent(0)
+    #ifdef GSI_STUFF
     , synchro_watchdog("synchronisation_watchdog")
-#endif // ifdef GSI_STUFF
+    #endif // ifdef GSI_STUFF
     , frs(this)
 {
     // disabled default ctor JA
 }
 //****************************************************************************
 TIFJAnalysis::TIFJAnalysis(
-    string  nam1,
-    string  nam2,
-    string  nam3,
-    string  nam4)  :
+        string  nam1,
+        string  nam2,
+        string  nam3,
+        string  /*nam4*/ )  :
     // fxUserFile(0),
-    fxMbsEvent(0), fxEbEvent(0)      // ,fxCaliEvent(0)
-#ifdef GSI_STUFF
-    , synchro_watchdog("synchronisation_watchdog")
-#endif //ifdef GSI_STUFF
+    fxMbsEvent(nullptr), fxEbEvent(nullptr)      // ,fxCaliEvent(0)
+  #ifdef GSI_STUFF
+  , synchro_watchdog("synchronisation_watchdog")
+  #endif //ifdef GSI_STUFF
 
-    //! trick, that allows to have separate version of frs_calibration.txt for PISOLO i EXOTIC
-#if CURRENT_EXPERIMENT_TYPE==PISOLO2_EXPERIMENT
-    , frs(this, "pisolo")
-#elif CURRENT_EXPERIMENT_TYPE   ==    EXOTIC_EXPERIMENT
-    , frs(this , "exotic")
-#elif CURRENT_EXPERIMENT_TYPE   ==    PRISMA_EXPERIMENT
-    , frs(this , "prisma")              // offical name, it will be used to construct the name of the calibration file
-#elif CURRENT_EXPERIMENT_TYPE   ==    IFJ_KRATTA_HECTOR_EXPERIMENT
-    , frs(this , "ccb")              // offical name, it will be used to construct the name of the calibration file
-#else
-    , frs(this)        // default argument is "frs"
-#endif
+  //! trick, that allows to have separate version of frs_calibration.txt for PISOLO i EXOTIC
+  #if CURRENT_EXPERIMENT_TYPE==PISOLO2_EXPERIMENT
+  , frs(this, "pisolo")
+  #elif CURRENT_EXPERIMENT_TYPE   ==    EXOTIC_EXPERIMENT
+  , frs(this , "exotic")
+  #elif CURRENT_EXPERIMENT_TYPE   ==    PRISMA_EXPERIMENT
+  , frs(this , "prisma")              // offical name, it will be used to construct the name of the calibration file
+  #elif CURRENT_EXPERIMENT_TYPE   ==    IFJ_KRATTA_HECTOR_EXPERIMENT
+  , frs(this , "ccb")              // offical name, it will be used to construct the name of the calibration file
+  #else
+  , frs(this)        // default argument is "frs"
+  #endif
 {
 
     RisingAnalysis_ptr = this;
@@ -130,9 +132,9 @@ TIFJAnalysis::TIFJAnalysis(
 
     flag_sorting_from_file = false;  // later we set it really
 
-//     char ptr1[250] = "currrent.lmd";
-//     char ptr2[250] = "currrent_RAW_tree";   // was ASF by mistake
-//     char ptr3[250] = "currrent_CAL_tree";
+    //     char ptr1[250] = "currrent.lmd";
+    //     char ptr2[250] = "currrent_RAW_tree";   // was ASF by mistake
+    //     char ptr3[250] = "currrent_CAL_tree";
 
 
     // look at the first argument
@@ -248,10 +250,10 @@ TIFJAnalysis::~TIFJAnalysis()
     delete  step1_output_event;
     delete  step2_output_event;
 
-    step1 =  0;
-    step2 = 0;
-    step1_output_event = 0;
-    step2_output_event = 0 ;
+    step1 =  nullptr;
+    step2 = nullptr;
+    step1_output_event = nullptr;
+    step2_output_event = nullptr;
 
 
     //////// handle optional user file:
@@ -315,7 +317,7 @@ int TIFJAnalysis::UserPreLoop()
     fxMbsEvent = dynamic_cast<TGo4MbsEvent*>(GetInputEvent("Unpack"));
     fxEbEvent = dynamic_cast<TIFJEvent*>(GetOutputEvent("Unpack"));
     fxCaliEvent = dynamic_cast<TIFJCalibratedEvent*>(
-                      GetOutputEvent("Calibrate"));
+                GetOutputEvent("Calibrate"));
 #endif
 
 
@@ -328,10 +330,10 @@ int TIFJAnalysis::UserPreLoop()
 
 
     ptr_to_mbs_nr_of_the_current_event =
-        step1->give_address_of_mbs_event_number();
+            step1->give_address_of_mbs_event_number();
 
-        // tree - ntuple - must be before hector, kata - bec it is reading the option from the file
-     read_ntuple_options();
+    // tree - ntuple - must be before hector, kata - bec it is reading the option from the file
+    read_ntuple_options();
     /*
         for ( int i = 0 ; i < steps_of_analysis.size() ; i++ )
         {
@@ -344,7 +346,8 @@ int TIFJAnalysis::UserPreLoop()
     frs.make_frs_preloop_action(fxEbEvent , fxCaliEvent);
 
 #ifdef HECTOR_PRESENT
-    hector.make_preloop_action (fxEbEvent , fxCaliEvent);
+    // hector.make_preloop_action (fxEbEvent , fxCaliEvent);
+    //   paris.make_preloop_action (fxEbEvent , fxCaliEvent);
 #endif
 
 
@@ -372,10 +375,10 @@ int TIFJAnalysis::UserPreLoop()
     {
 
         plik << pos->first << endl;
-//         cout << pos->first << " odpowiada_adres " << ( reinterpret_cast<long> (&(pos->second) )) << endl;
+        //        cout << pos->first << " odpowiada_adres " << ( reinterpret_cast<long> (&(pos->second) )) << endl;
 
         auto drugi = pos->second ;
-//         cout << "UserPreLoop()   drugi " << drugi.what_type << endl;
+        //         cout << " and his second (what type (of selfgate) is) is:= " << drugi.what_type << endl;
         if(pos->second.ptr_detector != nullptr)
         {
             if(pos->second.ptr_detector->selfgate_type_is_not_avaliable() == false  )
@@ -386,14 +389,17 @@ int TIFJAnalysis::UserPreLoop()
                         << static_cast<int>(pos->second.ptr_detector->give_selfgate_type()) // code of enum
                         << endl;
             }
+            else {
+                //                cout << "No selfgates for such detector? " << endl;
+            }
         }
 
     }
     // *user incrementer as well
-//     for(auto x : vector_of_user_incrementers)
-//     {
-//         plik << x << endl;
-//     }
+    //     for(auto x : vector_of_user_incrementers)
+    //     {
+    //         plik << x << endl;
+    //     }
 
     plik.close();
     plikselfgates.close();
@@ -419,7 +425,7 @@ int TIFJAnalysis::UserPreLoop()
     //    sorting_wish[i]->preloop_time();
     //  }
 
-   
+
     prepare_ntuple_addition();
     prepare_ratio_vector();
 
@@ -438,14 +444,15 @@ int TIFJAnalysis::UserPostLoop()
 
     {
         // if this is batch (also cracow) mode
-        time_t begin  = time(0);
+        time_t begin  = time(nullptr);
         frs.make_postloop_action();
 
 #ifdef HECTOR_PRESENT
-        hector.make_postloop_action();
+        // hector.make_postloop_action();
+        //paris.make_postloop_action();
 #endif
 
-        time_t end = time(0);
+        time_t end = time(nullptr);
         cout << "Saving spectra took " << end - begin << " seconds " << endl;
     }
 
@@ -499,7 +506,7 @@ int TIFJAnalysis::UserEventFunc()
 
 
     // fill user histograms:
-//     int value = 0;
+    //     int value = 0;
 
     // user defined spectra --------------------
     //  if ( cycle_on_real_data )
@@ -516,9 +523,9 @@ int TIFJAnalysis::UserEventFunc()
 
         for(unsigned i = 0; i < spectra_user.size(); i ++)
         {
-//                             cout << "Working with the user spectrum nr " << i
-//                             << " called " << spectra_user[i]->give_name()
-//                             << endl;
+            //                             cout << "Working with the user spectrum nr " << i
+            //                             << " called " << spectra_user[i]->give_name()
+            //                             << endl;
             spectra_user[i]->make_incrementations();
         }
 
@@ -597,7 +604,7 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
         ~spy_works()
         {
             remove
-            (nazwa.c_str());
+                    (nazwa.c_str());
         }
     };
 
@@ -652,13 +659,13 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
                         {
                             info_to_cracow(" prepares to run again");
                             remove
-                            (nazwa.c_str());
+                                    (nazwa.c_str());
                             PreLoop();
                             flag_pause = false;
                             cout << "continue the analysis" << endl;
                             plik.close();
                             remove
-                            (nazwa.c_str());    // second time, to be sure, because prelop takes time
+                                    (nazwa.c_str());    // second time, to be sure, because prelop takes time
                             automatic.running(true);
 
                             last_ev_mbs_long_term_nr =  0;
@@ -718,15 +725,15 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
 
 
                             double recent_ratio =
-                                (100 * (curr_ev_nr - previous_print_event_nr))
-                                /
-                                ((*ptr_to_mbs_nr_of_the_current_event) - previously_displayed_ev_mbs_nr);
+                                    (100 * (curr_ev_nr - previous_print_event_nr))
+                                    /
+                                    ((*ptr_to_mbs_nr_of_the_current_event) - previously_displayed_ev_mbs_nr);
 
 
                             double ratio_long_term =
-                                (100 * (curr_ev_nr - last_ev_analsyed_long_term_nr))
-                                /
-                                ((*ptr_to_mbs_nr_of_the_current_event) - last_ev_mbs_long_term_nr);
+                                    (100 * (curr_ev_nr - last_ev_analsyed_long_term_nr))
+                                    /
+                                    ((*ptr_to_mbs_nr_of_the_current_event) - last_ev_mbs_long_term_nr);
 
 
                             // Long term statistics
@@ -739,7 +746,10 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
                                         << ratio_long_term << "% "
                                         << " of all coming)"
                                         << "   [recently " << recent_ratio
-                                        << "%]   ";
+                                        << "%]  )"
+                                        << curr_ev_nr - last_ev_analsyed_long_term_nr << " events during "
+                                        << ((*ptr_to_mbs_nr_of_the_current_event) - last_ev_mbs_long_term_nr)
+                                        << " s" ;
 
                                 //--- speed ---------------------
                                 static int previous_speed_event_nr = 0;
@@ -753,10 +763,10 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
                                     if(speed > 1)
                                     {
                                         cout
-//                    <<  "(curr_ev_nr - previous_print_event_nr)= " <<  (curr_ev_nr - previous_print_event_nr)
-//          << " how_many_seconds_to_calculate_speed=" << how_many_seconds_to_calculate_speed
-//           <<  " diff=" <<  speed_ratio__time_diff
-//            << "\n  ( 1.0 * (curr_ev_nr - previous_print_event_nr) /diff )     "
+                                                //                    <<  "(curr_ev_nr - previous_print_event_nr)= " <<  (curr_ev_nr - previous_print_event_nr)
+                                                //          << " how_many_seconds_to_calculate_speed=" << how_many_seconds_to_calculate_speed
+                                                //           <<  " diff=" <<  speed_ratio__time_diff
+                                                //            << "\n  ( 1.0 * (curr_ev_nr - previous_print_event_nr) /diff )     "
                                                 << (1.0 * (curr_ev_nr - previous_speed_event_nr) / speed__time_diff)
                                                 << " ev/s ";
                                     }
@@ -778,8 +788,8 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
                                 else if(since_last_display < 10)        // every n seconds
                                 {
                                     print_ratios_every_n_events += 3000;
-//                                  print_ratios_every_n_events *= 2;
-//                                  cout << "----------Added  print_every_n_events, now is " << print_ratios_every_n_events << endl;
+                                    //                                  print_ratios_every_n_events *= 2;
+                                    //                                  cout << "----------Added  print_every_n_events, now is " << print_ratios_every_n_events << endl;
                                 }
 
                                 previous_print_event_nr = curr_ev_nr;
@@ -984,29 +994,23 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
         times = infinity; // was bug in go4
     }
     // automatic resources =====================================================
-    class spy_works
-    {
-
-        string nazwa;
+    class spy_works{
+        std::string nazwa;
     public:
-        spy_works()
-        {
+        spy_works(){
             nazwa = "commands/spy_works.command";
-            ofstream plik(nazwa.c_str());
-            plik << "running" << endl;
+            std::ofstream plik(nazwa.c_str());
+            plik << "running" << std::endl;
             plik.close();
         }
-        void running(bool flag_running)
-        {
-            ofstream plik(nazwa.c_str());
-            plik << (flag_running ? "running" : "paused")  << endl;
+        void tell_gui_that_spy_is_running(bool flag_running){
+            std::ofstream plik(nazwa.c_str());
+            plik << (flag_running ? "running" : "paused")  << std::endl;
             plik.close();
         }
 
-        ~spy_works()
-        {
-            remove
-            (nazwa.c_str());
+        ~spy_works() {
+            unlink(nazwa.c_str());
         }
     };
 
@@ -1044,47 +1048,46 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
 
 
                 // ------------ in PAUSED state ------------------
-                if(flag_pause)
-                {
+                if(flag_pause){
                     --curr_ev_nr;
                     // how often to look at the disk
 
                     static time_t last = time(0);
                     time_t now = time(0);
-                    if(now - last > 3)
-                    {
+                    if(now - last > 15 /*3*/ ){
                         last = now;
                         // check on the disk for the command "continue"
-                        string nazwa = "commands/spy_continue.command";
-                        ifstream plik(nazwa.c_str());
-                        if(plik)
-                        {
+                        std::string nazwa = "commands/spy_continue.command";
+                        std::ifstream plik(nazwa.c_str());
+                        if(plik){
                             info_to_cracow(" prepares to run again");
-                            remove
-                            (nazwa.c_str());
+
+                            unlink(nazwa.c_str());
                             PreLoop();
                             flag_pause = false;
-                            cout << "continue the analysis" << endl;
+                            std::cout << "-------------------------- continue the analysis" << std::endl;
                             plik.close();
-                            remove
-                            (nazwa.c_str());    // second time, to be sure, because prelop takes time
-                            automatic.running(true);
+                            unlink(nazwa.c_str());    // second time, to be sure, because prelop takes time
+                            automatic.tell_gui_that_spy_is_running(true);
 
                             last_ev_mbs_long_term_nr =  0;
                             last_ev_analsyed_long_term_nr = curr_ev_nr;
 
                             info_to_cracow("Spy prepares to run again");
 
-                        }
-                        else
-                        {
-                            cout << "Spy paused by the cracow viewer request" << endl;
+                        } else{
+                            std::cout << "Spy paused by the greWare viewer request" << std::endl;
                             info_to_cracow(" is PAUSED  on ", curr_ev_nr);
                         }
                     }
                 } //----------------------------- end if flag pause
                 else
                 {
+                    // I had a situation of the forgotten continue - which did not allowed
+                    // to refresh in Greware, but analysis was running ok.
+                    if(curr_ev_nr %25000 == false) {
+                        unlink( "commands/spy_continue.command");
+                    }
 
                     /** Flag telling that now we want to dump information
                     about the current event */
@@ -1109,9 +1112,9 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
                     perhaps_info_of_events(curr_ev_nr);
 
                     //============== RATIO DISPLAY ===============
-//                     static int print_ratios_every_n_events = 5000;
-//                     static time_t previous_print_ratios_time = time(NULL);
-//                     static int previous_print_event_nr = 0 ;
+                    //                     static int print_ratios_every_n_events = 5000;
+                    //                     static time_t previous_print_ratios_time = time(NULL);
+                    //                     static int previous_print_event_nr = 0 ;
 
                     if(!(curr_ev_nr % print_ratios_every_n_events))
                     {
@@ -1151,14 +1154,31 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
                     info_to_cracow("is PAUSED  on ", curr_ev_nr);
                     PostLoop();
                     flag_pause = true;
-                    automatic.running(false);
+                    automatic.tell_gui_that_spy_is_running(false);
                 }
                 else  if ( kkk.message == "pause_quick" )
                 {
                     info_to_cracow ( "is PAUSED  on ", curr_ev_nr );
-                    cout << "skipping spectra saving " << endl; // ----> no saving spectra in this option    PostLoop();
+                    std::cout << "skipping spectra saving " << std::endl; // ----> no saving spectra in this option    PostLoop();
                     flag_pause = true;
-                    automatic.running ( false );
+                    automatic.tell_gui_that_spy_is_running ( false );
+                }
+                else  if ( kkk.message == "continue" )
+                {
+                    info_to_cracow ( "is continuing  on ", curr_ev_nr );
+                    PreLoop();
+                    //std::cout << "skipping spectra saving " << std::endl; // ----> no saving spectra in this option    PostLoop();
+                    flag_pause = false;
+                    automatic.tell_gui_that_spy_is_running ( true );
+                }
+                else  if ( kkk.message == "update" )
+                {
+                    info_to_cracow ( "is updating  on ", curr_ev_nr );
+                    PostLoop();
+                    PreLoop();
+                    //std::cout << "skipping spectra saving " << std::endl; // ----> no saving spectra in this option    PostLoop();
+                    flag_pause = false;
+                    automatic.tell_gui_that_spy_is_running ( true );
                 }
                 else
                 {
@@ -1177,7 +1197,7 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
             }
             catch(std::exception& ex)        // treat standard library exceptions
             {
-
+                cout << ex.what() << endl;
                 //                 Message ( 0,"G-OOOO-> (2) standard exception %s appeared after %d cycles.  <-OOOO-G",
                 //                           ex.what(),i );
             }
@@ -1209,10 +1229,10 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
                 // << i << " cycles ?)" << endl;
                 if(!flag_sorting_from_file)
                 {
-                    cout << "Timeout ?  no events comming from MBS now... (after "
-                         << curr_ev_nr << " cycles )" << endl;
+                    std::cout << "Timeout ?  no events comming from MBS now... (after "
+                              << curr_ev_nr << " cycles )" << std::endl;
                     info_to_cracow("Timeout? No events from MBS now...  ", curr_ev_nr);
-                    automatic.running(true);     // when MBS gives constant Timeout
+                    automatic.tell_gui_that_spy_is_running(true);     // when MBS gives constant Timeout
                     // cracow would disable the icons of SPY
                     perhaps_delete_some_spectra();
                 }
@@ -1269,7 +1289,9 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
     }
     catch(std::exception& ex)        // treat standard library exceptions
     {
-        cout << "Standard  exception after " <<  curr_ev_nr << " cycles !!!  <-OOOO-G" << endl;
+        cout << "[F] Standard  exception after " <<  curr_ev_nr
+             << " cycles !!!  <-OOOO-G" << endl;
+        cout << ex.what() << endl;
         //         Message ( 0,"G-OOOO-> (2) standard exception %s appeared after %d cycles.  <-OOOO-G",
         //                   ex.what(),i );
     }
@@ -1280,7 +1302,7 @@ int TIFJAnalysis::run_jurek_ImplicitLoop(int times)
         //         Message ( 0,"G-OOOO-> !!! (1) Unexpected exception after %d cycles !!!  <-OOOO-G", i );
     }
     perhaps_conditions_report(true);    // parforce
-/////////// end outer catch block
+    /////////// end outer catch block
     info_to_cracow("Finished after ", curr_ev_nr);
     return curr_ev_nr;
 }
@@ -1311,15 +1333,15 @@ void TIFJAnalysis::display_procent_ratios_and_speed(const int curr_ev_nr)
 
 
         double recent_ratio =
-            (100.0 * (curr_ev_nr - previous_print_event_nr))
-            /
-            ((*ptr_to_mbs_nr_of_the_current_event) - previously_displayed_ev_mbs_nr);
+                (100.0 * (curr_ev_nr - previous_print_event_nr))
+                /
+                ((*ptr_to_mbs_nr_of_the_current_event) - previously_displayed_ev_mbs_nr);
 
 
         double ratio_long_term =
-            (100.0 * (curr_ev_nr - last_ev_analsyed_long_term_nr))
-            /
-            ((*ptr_to_mbs_nr_of_the_current_event) - last_ev_mbs_long_term_nr);
+                (100.0 * (curr_ev_nr - last_ev_analsyed_long_term_nr))
+                /
+                ((*ptr_to_mbs_nr_of_the_current_event) - last_ev_mbs_long_term_nr);
 
 #if 0
         if(recent_ratio < 0)
@@ -1340,11 +1362,11 @@ void TIFJAnalysis::display_procent_ratios_and_speed(const int curr_ev_nr)
                  << " last_ev_analsyed_long_term_nr = " << last_ev_analsyed_long_term_nr
 
                  <<  "(roznica = " << (curr_ev_nr - last_ev_analsyed_long_term_nr)
-                 << "\nn *ptr_to_mbs_nr_of_the_current_event = " << (*ptr_to_mbs_nr_of_the_current_event)
-                 << " last_ev_mbs_long_term_nr = " << last_ev_mbs_long_term_nr
-                 <<  "  roznica = " << ((*ptr_to_mbs_nr_of_the_current_event) - last_ev_mbs_long_term_nr)
-                 << "\n in result " << ratio_long_term
-                 << endl;
+                  << "\nn *ptr_to_mbs_nr_of_the_current_event = " << (*ptr_to_mbs_nr_of_the_current_event)
+                  << " last_ev_mbs_long_term_nr = " << last_ev_mbs_long_term_nr
+                  <<  "  roznica = " << ((*ptr_to_mbs_nr_of_the_current_event) - last_ev_mbs_long_term_nr)
+                   << "\n in result " << ratio_long_term
+                   << endl;
             //exit(33);
 
         }
@@ -1354,28 +1376,33 @@ void TIFJAnalysis::display_procent_ratios_and_speed(const int curr_ev_nr)
         {
             cout
                     << ", (ratio "
-                    << ((ratio_long_term > 98)? 100.0 : ratio_long_term )                    
+                    << ((ratio_long_term > 98)? 100.0 : ratio_long_term )
                     << "% of all coming)"
-                    << "   [recently " 
-		    << ((recent_ratio > 98)? 100.0 : recent_ratio )  
-                    << "%]   ";
+                    << "   [recently "
+                    << ((recent_ratio > 98)? 100.0 : recent_ratio )
+                    << "%]   "
+                       ;
             //--- speed ---------------------
             static int previous_speed_event_nr = 0;
-            int speed__time_diff = now - speed_ratio__time_before;
-            int how_many_seconds_to_calculate_speed = 2;
+            double speed__time_diff = now - speed_ratio__time_before;
+            int how_many_seconds_to_calculate_speed = 5;
 
             if(speed__time_diff >= how_many_seconds_to_calculate_speed)
             {
-                double speed = (1.0 * (curr_ev_nr - previous_speed_event_nr)  / speed__time_diff);
+                double speed = (1.0 * (curr_ev_nr - previous_speed_event_nr)  / (speed__time_diff) );
                 if(speed > 1)
                 {
                     cout
-                    //                    <<  "(curr_ev_nr - previous_print_event_nr) = " <<  (curr_ev_nr - previous_print_event_nr)
-                    //          << " how_many_seconds_to_calculate_speed = " << how_many_seconds_to_calculate_speed
-                    //           <<  " diff = " <<  speed_ratio__time_diff
-                    //            << "\n(1.0 * (curr_ev_nr - previous_print_event_nr)  / diff)     "
-                            << (1.0 * (curr_ev_nr - previous_speed_event_nr)  / speed__time_diff)
-                            << " ev/s ";
+                            //                    <<  "(curr_ev_nr - previous_print_event_nr) = " <<  (curr_ev_nr - previous_print_event_nr)
+                            //          << " how_many_seconds_to_calculate_speed = " << how_many_seconds_to_calculate_speed
+                            //           <<  " diff = " <<  speed_ratio__time_diff
+                            //            << "\n(1.0 * (curr_ev_nr - previous_print_event_nr)  / diff)     "
+                            << (1.0 * (curr_ev_nr - previous_speed_event_nr)  / (speed__time_diff) )
+                            << " ev/s "
+                               //                            << curr_ev_nr - previous_speed_event_nr << " events during "
+                               //                            << speed__time_diff
+                               //                            << " s,   "
+                               ;
                 }
                 speed_ratio__time_before = now;
                 previous_speed_event_nr = curr_ev_nr;
@@ -1490,7 +1517,7 @@ void TIFJAnalysis::perhaps_delete_some_spectra()
                 // " After Zeroing " << endl;
             } // while plik
             remove
-            (nazwa.c_str());
+                    (nazwa.c_str());
             //info_to_cracow(" is saving new, deleted specta");
             //PostLoop();  // saving the new zeroed version
             plik.close();
@@ -1520,7 +1547,7 @@ void TIFJAnalysis::save_just_observed(bool unconditionally)
     {
         last = now;
         // check on the disk for the command "continue"
-        cout << "Saving spectra currently watched by cracow..." << flush;
+        cout << "Saving spectra currently watched by GUI..." << flush;
         string nazwa = "commands/spectra_currently_watched.names";
         ifstream plik(nazwa.c_str());
         if(plik)
@@ -1532,7 +1559,7 @@ void TIFJAnalysis::save_just_observed(bool unconditionally)
                 if(!plik)
                     break;
 
-//                 cout << "Saving spectrum " << spec_name << endl;
+                //                 cout << "Saving spectrum " << spec_name << endl;
 
                 // remove extension
                 string::size_type pos = spec_name.rfind(".mat");
@@ -1543,7 +1570,7 @@ void TIFJAnalysis::save_just_observed(bool unconditionally)
                 else
                 {
                     // if it was matrix, check now - to not to save it too often
-                    if((matrix_save_multiplier % 1))        // 1 times 'seldomer'
+                    if((matrix_save_multiplier % 2))        // 2 times 'seldomer'
                     {
                         continue;
                     }
@@ -1560,9 +1587,14 @@ void TIFJAnalysis::save_just_observed(bool unconditionally)
                 // the trick below is to stop searching if it was found
                 if(frs.save_selected_spectrum(spec_name))
                 {}
-                else if(hector.save_selected_spectrum(spec_name)) {}
+                // else if(hector.save_selected_spectrum(spec_name)) {}
+                //else if(paris.save_selected_spectrum(spec_name)) {}
                 else if(save_analysis_local_spectrum(spec_name))
                 {}
+                else if(spec_name.find("_projection_") != string::npos )
+                {
+                    // we ignore _projection_x or _y spectra
+                }
                 else
                     cout << "Spectrum " << spec_name
                          << " not found, among spectra currently produced by the spy"
@@ -1604,50 +1636,48 @@ bool TIFJAnalysis::save_analysis_local_spectrum(string specname)
 //**************************************************************************
 /** to checking if cracow gui is giving any pause/go command */
 void TIFJAnalysis::check_for_commands(int nr_events)
-{
-    //  static time_t   time_last = time(0);
+{    //  static time_t   time_last = time(0);
 
-    time_t  time_now = time(0);
+    time_t  time_now = time ( nullptr);
 
-    // here we can try if the cracow viewer asked to finish the analysis
+    // here we can try if the greware viewer asked to finish the analysis
     // we look at this every 5 seconds
 
     int command_check_period_in_seconds = 2;
-    static time_t   time_last_command_check = time(0);
+    static time_t   time_last_command_check = time (nullptr);
 
-    if(time_now - time_last_command_check > command_check_period_in_seconds)
-    {
+    if ( time_now - time_last_command_check > command_check_period_in_seconds ){
         time_last_command_check = time_now;
-        //    cout << "Command check done " << command_check_period_in_seconds
-        //        << " seconds)" << endl;
+        //    std::cout << "Command check done " << command_check_period_in_seconds
+        //        << " seconds)" << std::endl;
 
         //---------------
+        //bool flag_spy_asked_to_quit = 0;
         //     info_to_cracow(" is running ", nr_events);
 
 
-        //      ofstream plikinfo("./commands/spy_events.info");
+        //      ofstream plikinfo( path.dir_commands() + "spy_events.info");
         //      if(plikinfo &&  flag_spy_asked_to_quit == false )
         //      {
-        //        plikinfo << "Spy is running, " << nr_events << " events "<< endl;
+        //        plikinfo << "Spy is running, " << nr_events << " events "<< std::endl;
         //      }
         //      plikinfo.close();
 
 
 
-       // bool flag_spy_asked_to_quit = 0;
-        
-        ifstream plik("./commands/spy_finish.command");
-        if(plik)
+
+        std::ifstream plik1 (  "commands/spy_finish.command" );
+        if ( plik1 )
         {
 
-            info_to_cracow("Finished after ", nr_events);
+            info_to_cracow ( "Finished after ", nr_events );
 
             //flag_spy_asked_to_quit = true;
 
-            cout << "Throwing the cracow exception" << endl;
-            plik.close();
-            remove
-            ("./commands/spy_finish.command");
+            std::cout << "Throwing the greware exception" << std::endl;
+            plik1.close();
+            unlink
+                    (  "commands/spy_finish.command");
 
             Tcracow_exception kkk;
             kkk.message = "finish";
@@ -1655,36 +1685,46 @@ void TIFJAnalysis::check_for_commands(int nr_events)
         }
 
         //---------------
-        ifstream plik2("./commands/spy_pause.command");
-        if(plik2)
+        std::ifstream plik2 (  "commands/spy_pause.command" );
+        if ( plik2 )
         {
-            string contents;
-            plik2 >> contents;
-// 			if ( plik2 )
-// 				cout << "succes in reading " << endl;
-// 			else
-// 				cout << "Error during reading " << endl;
-
-// 			cout << "Contents of the pause command is -->" << contents <<"<--" << endl;
             plik2.close();
-            remove
-            ( "./commands/spy_pause.command" );
+            unlink
+                    ( "commands/spy_pause.command");
+
 
             info_to_cracow ( "Spy: asked to pause after ", nr_events );
 
-            cout << "Throwing the cracow pause exception" << endl;
+            std::cout << "Throwing the greware pause exception" << std::endl;
             Tcracow_exception kkk;
             kkk.message = "pause";
-
-            if ( contents == "quick" )
-            {
-// 				cout << "Discover the word 'quick' " << endl;
-                kkk.message += string ( "_" + contents );
-            }
-
             throw kkk;
         }
-        // the exception continue is checks in the jurek_implit_loop()
+        std::ifstream plik3 ( "commands/spy_continue.command" );
+        if ( plik3 )
+        {
+            plik3.close();
+            unlink
+                    (  "commands/spy_continue.command");
+            info_to_cracow ( "Spy: asked to continue after ", nr_events );
+            std::cout << "Throwing the greware pause exception" << std::endl;
+            Tcracow_exception kkk;
+            kkk.message = "continue";
+            throw kkk;
+        }
+        // the exception continue is checked in the jurek_implit_loop()
+        std::ifstream plik4 ( "commands/spy_update.command" );
+        if ( plik4 )
+        {
+            plik4.close();
+            unlink
+                    (  "commands/spy_update.command" );
+            info_to_cracow ( "Spy: asked to update  ", nr_events );
+            std::cout << "Throwing the greware update exception" << std::endl;
+            Tcracow_exception kkk;
+            kkk.message = "update";
+            throw kkk;
+        }
 
     }
 }
@@ -1700,11 +1740,11 @@ void TIFJAnalysis::info_to_cracow(string s, int i)
         {
             plikinfo << i
                      << " events "
-// 		     "(created "
-//                      //  << " SUBevents read("
-//                      << nr_events_analysed
-//                      << " Events)"
-                     ;
+                        // 		     "(created "
+                        //                      //  << " SUBevents read("
+                        //                      << nr_events_analysed
+                        //                      << " Events)"
+                        ;
         }
         plikinfo << endl;
         plikinfo << time(0) << endl;
@@ -1740,8 +1780,8 @@ void TIFJAnalysis::read_definitions_of_user_spectra()
     // BUT AT FIRST WE READ USER CONDITIONS DEFINITONS ---------
     // retrieving the names.
     vector<string> names =
-        FH::find_files_in_directory("./conditions",
-                                    ".cnd");
+            FH::find_files_in_directory("./conditions",
+                                        ".cnd");
 
     // we always build new condition vector, so perhaps we should delete the conditions
     // from the old version
@@ -1757,7 +1797,7 @@ void TIFJAnalysis::read_definitions_of_user_spectra()
     for(unsigned nr = 0; nr < names.size(); nr++)
     {
         cout << "User defined condition definition file : " << names[nr]
-             << endl;
+                << endl;
         create_user_condition(names[nr]);
     }
 #endif
@@ -1767,15 +1807,15 @@ void TIFJAnalysis::read_definitions_of_user_spectra()
     // NOW WE REALLY READ USER SPECTRA DEFINIIONS ------------
     // retrieving the names.
     names =
-        FH::find_files_in_directory("./definitions_user_spectra",
-                                    ".user_definition");
+            FH::find_files_in_directory("./definitions_user_spectra",
+                                        ".user_definition");
 
     // loop which is looking into the directory for a specified definions *.
 
     for(unsigned nr = 0; nr < names.size(); nr++)
     {
         cout << "User defined spectrum definition file : " << names[nr] <<
-             endl;
+                endl;
         create_user_spectrum(names[nr]);
     }
 }
@@ -1785,7 +1825,7 @@ void TIFJAnalysis::create_user_spectrum(string name_of_description)
 {
 
     string pathed_name_of_description = "./definitions_user_spectra/" +
-                                        name_of_description;
+            name_of_description;
 
     //  cout << "In the string " << name
     //        << " lookin for the extension "
@@ -1794,20 +1834,20 @@ void TIFJAnalysis::create_user_spectrum(string name_of_description)
     string name_without_extension = name_of_description;
 
     string::size_type  extension_starts =
-        name_of_description.find(".user_definition");
+            name_of_description.find(".user_definition");
 
     if(extension_starts == string::npos)
     {
         cout << "In the string " << name_of_description
              << " the extension was not found"
-             //<< " this should never happen "
+                //<< " this should never happen "
              << endl;
         //return;
     }
     else
     {
         name_without_extension = name_of_description.erase(extension_starts,
-                                 100);
+                                                           100);
     }
 
     user_spectrum_description  desc;
@@ -1816,14 +1856,13 @@ void TIFJAnalysis::create_user_spectrum(string name_of_description)
 
     //check if such a spectrum already exists in our vector
     bool known = false;
-    int position =  0;
-    Tuser_spectrum *spec = 0;
+    unsigned int position =  0;
+    Tuser_spectrum *spec = nullptr;
 
     for(unsigned i = 0; i < spectra_user.size(); i ++)
     {
-
-        //    cout << "searching ih the table of specta: current item is "
-        //          << spectra_user[i]->give_name() << endl;
+        //            cout << "searching in the table of specta: current item is "
+        //                  << spectra_user[i]->give_name() << endl;
         if(spectra_user[i]->give_name() == name_without_extension)
         {
             known = true;
@@ -1835,17 +1874,17 @@ void TIFJAnalysis::create_user_spectrum(string name_of_description)
 
 
 
-    bool should_be_created = false;
+    bool should_be_created_in_the_program = false;
 
     if(!known)
     {
         // if not = create it and put into the vector
-        should_be_created = true;
+        should_be_created_in_the_program = true;
     }
-    else     // if it is known
+    else     // if it is known on the list look if it has different binning, etc.
     {
         Tuser_spectrum *uspec = dynamic_cast<Tuser_spectrum *>
-                                (spectra_user[position]);
+                (spectra_user[position]);
         //  check dimmension, binning, beg, end (on x and y if necessery)
 
         if(desc.are_parameters_identical(uspec->give_description()) == false)
@@ -1858,14 +1897,18 @@ void TIFJAnalysis::create_user_spectrum(string name_of_description)
             spectra_user.erase(spectra_user.begin() + position);
 
             //and create the new one
-            should_be_created = true;
+            should_be_created_in_the_program = true;
+        }
+        else {
+            cout << "identical spectrum already exists" << endl;
+            should_be_created_in_the_program =false;
         }
     }
 
     //---------------------------------------
-    if(should_be_created)
+    if(should_be_created_in_the_program)
     {
-        cout << "user Spectrum had to be created " << endl;
+        //cout << "user Spectrum object had to be created " << endl;
         spec = new Tuser_spectrum();
         spec->read_in_parameters(name_without_extension);     // the path will be added automatically
 
@@ -1906,7 +1949,7 @@ void TIFJAnalysis::create_user_spectrum(string name_of_description)
     cout << "Trying to assign a condition named : " << cn << endl;
     if(cn == "No_condition")
     {
-        spec->remember_address_of_condition(0);
+        spec->remember_address_of_condition(nullptr);
     }
     else
     {
@@ -1928,7 +1971,7 @@ void TIFJAnalysis::create_user_spectrum(string name_of_description)
 
             // if not existing, try to create it
             spec->remember_address_of_condition(
-                create_user_condition((spec->give_description()).give_conditon_name()));
+                        create_user_condition((spec->give_description()).give_conditon_name()));
         }
 
     } // end else no condition
@@ -1949,7 +1992,7 @@ Tuser_condition*  TIFJAnalysis::create_user_condition(string name_of_description
     if(extension_starts != string::npos)
     {
         name_without_extension =
-            name_of_description.erase(extension_starts, 100);
+                name_of_description.erase(extension_starts, 100);
     }
 
 
@@ -1986,24 +2029,24 @@ Tuser_condition*  TIFJAnalysis::create_user_condition(string name_of_description
     {
         cout << "Nesting the conitions reach the level " << level_of_nesting
              << "\n - it is unrealistic, most probably there is a situation "
-             "\n 'Snake is eating its own tail' " << endl;
+                "\n 'Snake is eating its own tail' " << endl;
         exit(1);
     }
 
 
     nesting_trace.push_back(name_without_extension);
 
-//  conditions are not registered in root, they do not have to have
-//  any continuity after any PAUSE, so we can create them new everytime
+    //  conditions are not registered in root, they do not have to have
+    //  any continuity after any PAUSE, so we can create them new everytime
 
 
     Tuser_condition *c = new Tuser_condition();
     c->read_in_parameters(name_without_extension);     // the path will be added automatically
 
-// during creation the spectrum registers itself
-// by calling  "remember_user_spectrum" from this class
+    // during creation the spectrum registers itself
+    // by calling  "remember_user_spectrum" from this class
 
-// put spectrum on the list user spectra
+    // put spectrum on the list user spectra
     user_condition.push_back(c);
 
     level_of_nesting--;
@@ -2058,7 +2101,7 @@ void TIFJAnalysis::perhaps_conditions_report(bool par_force)
                 << (par_force ?  " (par force) " : " (normal) ")
                 << "Statistics \"Tested/True\" made at "
                 <<  asctime(timeinfo)
-                ;
+                    ;
         string information = iii.str();
 
 
@@ -2083,24 +2126,24 @@ void TIFJAnalysis::perhaps_conditions_report(bool par_force)
 /** use the named pointer to know the ntuple data sources */
 void TIFJAnalysis::read_ntuple_options()
 {
-  ifstream plik("./options/collect_ntuple_file.option");
-  if(!plik)
-  {
-    return; // no wish
-  }
-   
+    ifstream plik("./options/collect_ntuple_file.option");
+    if(!plik)
+    {
+        return; // no wish
+    }
+
     // STEP 1NTUPLE =======================================
     // Perhaps the raw n-tuple is wanted
     
     try
     {
-      ntuple_RAW_is_collected =
-      (bool) FH::find_in_file(plik, "collect_raw_ntuple_file");
+        ntuple_RAW_is_collected =
+                (bool) FH::find_in_file(plik, "collect_raw_ntuple_file");
     }
     catch(...)
     {
-      // this option is new, so it may be not always included
-      ntuple_RAW_is_collected = false;
+        // this option is new, so it may be not always included
+        ntuple_RAW_is_collected = false;
     }
     
     cout << __func__ << ":   ntuple_RAW_is_collected = " << ntuple_RAW_is_collected << endl;
@@ -2113,16 +2156,16 @@ void TIFJAnalysis::read_ntuple_options()
     // note, we do not need the variable for this option, it is enough if we do not
     // fill the vector 'ntuple_entry_vector'
     if((ntuple_CAL_is_collected =
-      (bool) FH::find_in_file(plik, "collect_ntuple_file")) == false)
-      {
+        (bool) FH::find_in_file(plik, "collect_ntuple_file")) == false)
+    {
         return;
-      }
+    }
 }
 //************************************************************************************
-  /** use the named pointer to know the ntuple data sources */
-  void TIFJAnalysis::prepare_ntuple_addition()
-  {
-  cout << "TIFJAnalysis::prepare_ntuple_addition() " << endl;
+/** use the named pointer to know the ntuple data sources */
+void TIFJAnalysis::prepare_ntuple_addition()
+{
+    cout << "TIFJAnalysis::prepare_ntuple_addition() " << endl;
     // This function is executed during PRELOOP time.
     // It reads from the disk the conditions when the event
     // will be good for the n-tuple
@@ -2141,8 +2184,8 @@ void TIFJAnalysis::read_ntuple_options()
     //  };
 
     ntuple_entry_vector.clear();
-    step2_cond_ptr = 0;
-    step2_cond_result_ptr = 0;
+    step2_cond_ptr = nullptr;
+    step2_cond_result_ptr = nullptr;
 
 
     // at first look it the user is going to create the ntuple now
@@ -2162,7 +2205,7 @@ void TIFJAnalysis::read_ntuple_options()
         try
         {
             ntuple_RAW_is_collected =
-                (bool) FH::find_in_file(plik, "collect_raw_ntuple_file");
+                    (bool) FH::find_in_file(plik, "collect_raw_ntuple_file");
         }
         catch(...)
         {
@@ -2180,7 +2223,7 @@ void TIFJAnalysis::read_ntuple_options()
         // note, we do not need the variable for this option, it is enough if we do not
         // fill the vector 'ntuple_entry_vector'
         if((ntuple_CAL_is_collected =
-                    (bool) FH::find_in_file(plik, "collect_ntuple_file")) == false)
+            (bool) FH::find_in_file(plik, "collect_ntuple_file")) == false)
         {
             return;
         }
@@ -2200,26 +2243,26 @@ void TIFJAnalysis::read_ntuple_options()
 #ifdef NIGDY
 
         use_isotope_identifier_for_ntuple_events =
-            (bool) FH::find_in_file(plik,
-                                    "add_only_events_with_identified_isotopes");
+                (bool) FH::find_in_file(plik,
+                                        "add_only_events_with_identified_isotopes");
 
         ntuple_mw_must_be_ok =
-            (bool) FH::find_in_file(plik,
-                                    "mw_must_be_present");
+                (bool) FH::find_in_file(plik,
+                                        "mw_must_be_present");
         ntuple_tof_must_be_ok =
-            (bool) FH::find_in_file(plik,
-                                    "tof_must_be_present");
+                (bool) FH::find_in_file(plik,
+                                        "tof_must_be_present");
         ntuple_sci_pos_must_be_ok =
-            (bool) FH::find_in_file(plik,
-                                    "sci_pos_must_be_present");
+                (bool) FH::find_in_file(plik,
+                                        "sci_pos_must_be_present");
 #ifdef CATE_PRESENT
 
         ntuple_cate_xy_must_be_ok =
-            (bool) FH::find_in_file(plik,
-                                    "cate_xy_must_be_present");
+                (bool) FH::find_in_file(plik,
+                                        "cate_xy_must_be_present");
         ntuple_cate_energy_must_be_ok =
-            (bool) FH::find_in_file(plik,
-                                    "cate_energy_must_be_present");
+                (bool) FH::find_in_file(plik,
+                                        "cate_energy_must_be_present");
 #endif
 #endif
 
@@ -2247,30 +2290,30 @@ void TIFJAnalysis::read_ntuple_options()
 #if CURRENT_EXPERIMENT_TYPE == G_FACTOR_OCTOBER_2005
 
         ntuple_entry_vector.push_back(
-            ntuple_entry_data("xia_P_time_minus_Ge_time_OR_raw",
-                              &fxCaliEvent->xia_P_time_minus_Ge_time_OR_raw,
-                              false));
+                    ntuple_entry_data("xia_P_time_minus_Ge_time_OR_raw",
+                                      &fxCaliEvent->xia_P_time_minus_Ge_time_OR_raw,
+                                      false));
         ntuple_entry_vector.push_back(
-            ntuple_entry_data("vxi_P_time_minus_Ge_time_OR_raw",
-                              &fxCaliEvent->vxi_P_time_minus_Ge_time_OR_raw,
-                              false));
+                    ntuple_entry_data("vxi_P_time_minus_Ge_time_OR_raw",
+                                      &fxCaliEvent->vxi_P_time_minus_Ge_time_OR_raw,
+                                      false));
 #endif
 
 
 #ifdef VXI_ELECTRONICS_FOR_GERMANIUMS_PRESENT
 
         ntuple_entry_vector.push_back(
-            ntuple_entry_data("Rising_crystal_multiplicity",
-                              &fxCaliEvent->Rising_crystal_multiplicity,
-                              0));
+                    ntuple_entry_data("Rising_crystal_multiplicity",
+                                      &fxCaliEvent->Rising_crystal_multiplicity,
+                                      0));
 #endif
 
 #ifdef XIA_ELECTRONICS_FOR_GERMANIUMS_PRESENT
 
         ntuple_entry_vector.push_back(
-            ntuple_entry_data("Rising_crystal_xia_multiplicity",
-                              &fxCaliEvent->Rising_crystal_xia_multiplicity,
-                              0));
+                    ntuple_entry_data("Rising_crystal_xia_multiplicity",
+                                      &fxCaliEvent->Rising_crystal_xia_multiplicity,
+                                      0));
 #endif
 
 
@@ -2291,24 +2334,24 @@ void TIFJAnalysis::read_ntuple_options()
 #ifdef INFO_FOR_USERS
 
         How to put a new entry in the CAL tree ?
-        It is easy if the desired value is already defined as an incrementer. In such a situation
-        it is enough to make the following steps :
+                    It is easy if the desired value is already defined as an incrementer. In such a situation
+                    it is enough to make the following steps :
 
-        Step 1.
-        Make the desired entry in the cal Tree(TIFJCalibratedEvent.h)
-for example :
-            double xxx;
-    (remember that the type is important. The raw values are usually "int")
+                    Step 1.
+                    Make the desired entry in the cal Tree(TIFJCalibratedEvent.h)
+                    for example :
+                    double xxx;
+        (remember that the type is important. The raw values are usually "int")
 
 
-        Step 2.
-Here, below this info put the following comand:
+                Step 2.
+                Here, below this info put the following comand:
 
-        ntuple_entry_vector.push_back(ntuple_entry_data(
-                                          "name_of_choosen_incrementer",   // <--- Type here the name of the desi
-                                          &fxCaliEvent->xxx,                      // xxx is the name where the value should "go"
-                                          false                                            // <-- leave it like this
-                                      )) ;
+            ntuple_entry_vector.push_back(ntuple_entry_data(
+                                              "name_of_choosen_incrementer",   // <--- Type here the name of the desi
+                                              &fxCaliEvent->xxx,                      // xxx is the name where the value should "go"
+                                              false                                            // <-- leave it like this
+                                              )) ;
 
 #endif   //   end of  INFO
 
@@ -2329,7 +2372,7 @@ Here, below this info put the following comand:
             // searching in the table
 
             Tmap_of_named_pointers::iterator pos
-                = named_pointer.find(ntuple_entry_vector[i].variable_name);
+                    = named_pointer.find(ntuple_entry_vector[i].variable_name);
             if(pos != named_pointer.end())
             {
                 // Key found
@@ -2353,10 +2396,10 @@ Here, below this info put the following comand:
                      << "  there is a name of the incrementer (variable):"
                      << ntuple_entry_vector[i].variable_name
                      << "\nwhich is not known to the spy.\n"
-                     "Please correct this in the source file TIFJAnalysis, function:\n"
-                     "     void TIFJAnalysis::prepare_ntuple_addition()"
-                     //          "go to the cracow viewer now, open the definition of this condition\n"
-                     //          "and choose one of the available incrementers"
+                        "Please correct this in the source file TIFJAnalysis, function:\n"
+                        "     void TIFJAnalysis::prepare_ntuple_addition()"
+                        //          "go to the cracow viewer now, open the definition of this condition\n"
+                        //          "and choose one of the available incrementers"
                      << endl;
                 exit(1);
             }
@@ -2388,7 +2431,7 @@ Here, below this info put the following comand:
 void TIFJAnalysis::put_data_to_ntuple()
 {
 
-//     bool is_good = true;
+    //     bool is_good = true;
     //if(is_verbose_on())     cout << "Storing chosen data into the Ntuple calibrated event----------------" << endl;
 
 #ifdef USER_INCREMENTERS_ENABLED
@@ -2458,17 +2501,17 @@ void TIFJAnalysis::put_data_to_ntuple()
 
             case 1: // double  // this is normal double
                 * ((double*) ntuple_entry_vector[i].variable_ntuple_ptr)   =
-                    * ((double*) ntuple_entry_vector[i].variable_source_ptr);
+                        * ((double*) ntuple_entry_vector[i].variable_source_ptr);
                 break;
 
             case 2:   // int
                 * ((int*) ntuple_entry_vector[i].variable_ntuple_ptr)   =
-                    * ((int*)(ntuple_entry_vector[i].variable_source_ptr));
+                        * ((int*)(ntuple_entry_vector[i].variable_source_ptr));
                 break;
 
             case 3: // this is normal bool
                 * ((bool*) ntuple_entry_vector[i].variable_ntuple_ptr)   =
-                    * ((bool*) ntuple_entry_vector[i].variable_source_ptr);
+                        * ((bool*) ntuple_entry_vector[i].variable_source_ptr);
                 break;
 
             default:
@@ -2483,128 +2526,128 @@ void TIFJAnalysis::put_data_to_ntuple()
 #ifdef INFO_FOR_COPYING_RAW_TREE_DATA_INTO_CAL_TREE
 
         this is the place   where you can copy anything into the CAL Root Tree
-        from RAW Root Tree
+                from RAW Root Tree
 
-        To make below operation possible to compile, you must be sure
-that:
-        1. the such member data really exist in the RAW tree(surely yes)
-        2. the mentioned member data exist in the CAL tree(you must make it!)
-        (The type them is the same(so, they are both "double" or both of them are "int"))
-        3. Put here below, the operation of copying
-        --------
-Example:
-        --------
-        Imagine that you would like to have in the CAL tree the information
-        about   mw41_x_left(which exists in the RAW root tree)
+                To make below operation possible to compile, you must be sure
+                that:
+            1. the such member data really exist in the RAW tree(surely yes)
+          2. the mentioned member data exist in the CAL tree(you must make it!)
+          (The type them is the same(so, they are both "double" or both of them are "int"))
+          3. Put here below, the operation of copying
+                             --------
+                             Example:
+                             --------
+                             Imagine that you would like to have in the CAL tree the information
+                             about   mw41_x_left(which exists in the RAW root tree)
 
-        ad 1.
-Look into  TIFJEvent.h and find this variable. Read that it has a type: "int"
-        .
+          ad 1.
+          Look into  TIFJEvent.h and find this variable. Read that it has a type: "int"
+          .
 
-        ad 2.
-        Go to TIFJCalibratedEvent.h and create the same entry
+          ad 2.
+          Go to TIFJCalibratedEvent.h and create the same entry
 
-        int mw41_x_left;
+          int mw41_x_left;
 
         If you do
-            not know where to place it precisely, do
+                not know where to place it precisely, do
                 it at the end, just
                 before the line
                 int end_for_zeroing ;  //!  dummy member to recognize end for memset function
 
 
         ad 3.
-        Now, below this info, place your copying instruction
-        fxCaliEvent->mw41_x_left = fxEbEvent->mw41_x_left;
+                Now, below this info, place your copying instruction
+                fxCaliEvent->mw41_x_left = fxEbEvent->mw41_x_left;
 
 
         You can also use the following macro
-#define   COPYING_TREE_ONE_ENTRY(x) \
-fxCaliEvent->(xxx) = fxEbEvent->(xxx);
+        #define   COPYING_TREE_ONE_ENTRY(x) \
+            fxCaliEvent->(xxx) = fxEbEvent->(xxx);
 
-    In this case below this info you just type the command
+                In this case below this info you just type the command
 
-            COPYING_TREE_ONE_ENTRY(mw41_x_left);
+                COPYING_TREE_ONE_ENTRY(mw41_x_left);
 
         -------------- -
         ARRAYS
-        -------------- -
-        If you want to copy not the single entry, but an array
-        you can use the memcpy command
-        Lets assume, that we want copy from the RAW tree(TIFJEvent.h)
-        the array
-        int music_8_energy[8]
+                -------------- -
+                If you want to copy not the single entry, but an array
+                you can use the memcpy command
+                Lets assume, that we want copy from the RAW tree(TIFJEvent.h)
+                the array
+                int music_8_energy[8]
 
 
-        1. Find it in the TIFJEvent.h file(just to know its type)
+                1. Find it in the TIFJEvent.h file(just to know its type)
 
-        2. Create exactly the same entry in the CAL tree(TIFJCalibratedEvent.h)
+                2. Create exactly the same entry in the CAL tree(TIFJCalibratedEvent.h)
 
-        int music_8_energy[8]
+                int music_8_energy[8]
 
-        If you do
-            not know where to place it precisely, do
+                If you do
+                not know where to place it precisely, do
                 it at the end, just
                 before the line
                 int end_for_zeroing ;  //!  dummy member to recognize end for memset function
 
         3. Now we need here, in this file, below this info the following copying
-        insruction
+                insruction
 
-        // example for to copy the whole array
+                // example for to copy the whole array
 
-        memcpy(fxCaliEvent->music_8_energy,   // <--- where to copy
-               fxEbEvent->music_8_energy,     // from where
-               sizeof(fxEbEvent->music_8_energy)      // how many bytes
-              );
+                memcpy(fxCaliEvent->music_8_energy,   // <--- where to copy
+                       fxEbEvent->music_8_energy,     // from where
+                       sizeof(fxEbEvent->music_8_energy)      // how many bytes
+                       );
 
         The above instruction you can write easier using the macro(defined below)
 
-        COPYING_TREE_ONE_ARRAY(music_8_energy);
+                COPYING_TREE_ONE_ARRAY(music_8_energy);
 
         ......................HINT:
-        ...........................
+            ...........................
 
-        If you put here below your commands they will work untill the next upgrade of spy. So
-        the new version of spy TIFJAnalysis.cxx file will not contain it.
-    In such a case you need to make it also in the new version.
+            If you put here below your commands they will work untill the next upgrade of spy. So
+            the new version of spy TIFJAnalysis.cxx file will not contain it.
+            In such a case you need to make it also in the new version.
             However, there is a good way to do
-                it:
-        type your commands in the separate file
-        called(for example)
-            my_instructions.inc
-            and here below - just put the directive
-#include "my_instructions.inc"
-            When you get
-            the newer version of spy, it is enoug if in the proper place
-            of the file TIFJAnalysis.cxx(namely here below)
-                you type this
-                directive
-#include "my_instructions.inc"
-                .........................................................end of hint
+            it:
+            type your commands in the separate file
+            called(for example)
+          my_instructions.inc
+          and here below - just put the directive
+  #include "my_instructions.inc"
+          When you get
+          the newer version of spy, it is enoug if in the proper place
+                                    of the file TIFJAnalysis.cxx(namely here below)
+          you type this
+          directive
+  #include "my_instructions.inc"
+          .........................................................end of hint
 
-#endif  // INFO_FOR_COPYING_RAW_TREE_DATA_INTO_CAL_TREE
-
-
-                //-------------------------------------------------------------------------------------------------
-                // usefull macro for a Single variable copy
-#define   COPYING_TREE_ONE_ENTRY(xxx) \
-fxCaliEvent->xxx = fxEbEvent->xxx;
+  #endif  // INFO_FOR_COPYING_RAW_TREE_DATA_INTO_CAL_TREE
 
 
+          //-------------------------------------------------------------------------------------------------
+          // usefull macro for a Single variable copy
+  #define   COPYING_TREE_ONE_ENTRY(xxx) \
+      fxCaliEvent->xxx = fxEbEvent->xxx;
 
-                // usefull macro for an Array copy
-#define   COPYING_TREE_ONE_ARRAY(xxx) \
-    memcpy(fxCaliEvent->xxx, fxEbEvent->xxx, sizeof(fxEbEvent->xxx));
-                //-------------------------------------------------------------------------------------------------
 
 
-                //#########################################
-                //   HERE IS THE PLACE TO PUT YOUR OWN WISHES (read infos above)
+          // usefull macro for an Array copy
+  #define   COPYING_TREE_ONE_ARRAY(xxx) \
+      memcpy(fxCaliEvent->xxx, fxEbEvent->xxx, sizeof(fxEbEvent->xxx));
+          //-------------------------------------------------------------------------------------------------
 
-#ifdef NIGDY
-                // Copying one particular simple entry ======================
-                fxCaliEvent->mw41_x_left = fxEbEvent->mw41_x_left;
+
+          //#########################################
+          //   HERE IS THE PLACE TO PUT YOUR OWN WISHES (read infos above)
+
+  #ifdef NIGDY
+          // Copying one particular simple entry ======================
+          fxCaliEvent->mw41_x_left = fxEbEvent->mw41_x_left;
         // same using macro
         COPYING_TREE_ONE_ENTRY(mw41_x_left);
 
@@ -2612,7 +2655,7 @@ fxCaliEvent->xxx = fxEbEvent->xxx;
         memcpy(fxCaliEvent->music_8_energy,   // <--- where to copy
                fxEbEvent->music_8_energy,     // from where
                sizeof(fxEbEvent->music_8_energy)      // how many bytes
-              );
+               );
         // same using another macro
         COPYING_TREE_ONE_ARRAY(music_8_energy);
         // End of examples, put your stuff  below
@@ -2829,9 +2872,9 @@ void TIFJAnalysis::prepare_ratio_vector()
             // Key NOT found
             cout << "\nERROR: In the definition of RATIO statistics  "
                  <<    " there is a name of the incrementer (variable):\n"
-                 << ratio_vector[i].name
-                 << "\nwhich is not known to the spy.\n"
-                 << endl;
+                    << ratio_vector[i].name
+                    << "\nwhich is not known to the spy.\n"
+                    << endl;
 
             exit(1);
         }
@@ -2859,7 +2902,7 @@ int TIFJAnalysis::read_how_many_branches()
     try
     {
         how_many_branches =
-            (int) FH::find_in_file(plik, "how_many_branches");
+                (int) FH::find_in_file(plik, "how_many_branches");
     }
     catch(Tno_keyword_exception &m)
     {
@@ -2928,7 +2971,7 @@ void TIFJAnalysis::read_autosave_time()
     try
     {
         autosave_period_in_minutes =
-            (int) FH::find_in_file(plik, "autosave_period_in_minutes");
+                (int) FH::find_in_file(plik, "autosave_period_in_minutes");
     }
     catch(...)
     {
@@ -2950,21 +2993,21 @@ void TIFJAnalysis::check_all_user_def_conditions()
 
     for(unsigned i = 0; i < user_condition.size(); i ++)
     {
-//             cout << "============ Checking the value of the condition nr "
-//             << i
-//             << " called "
-//             << user_condition[i]->desc.give_name()
-//             << endl;
+        //             cout << "============ Checking the value of the condition nr "
+        //             << i
+        //             << " called "
+        //             << user_condition[i]->desc.give_name()
+        //             << endl;
 
         user_condition[i]->calculate_value_of_condition();
 
-//             cout << "Condition nr "
-//             << i
-//             << " called "
-//             << user_condition[i]->give_name()
-//             << " is  "
-//             << (user_condition[i]->give_result() ? " TRUE " : " FALSE ")
-//             << endl;
+        //             cout << "Condition nr "
+        //             << i
+        //             << " called "
+        //             << user_condition[i]->give_name()
+        //             << " is  "
+        //             << (user_condition[i]->give_result() ? " TRUE " : " FALSE ")
+        //             << endl;
 
 
 
@@ -3077,7 +3120,7 @@ void TIFJAnalysis::save_times_of_zeroing_on_disk()
     const unsigned int max_length_of_name = 200;
 
     map<string, time_t >::iterator it =
-        map_of_zeroing.begin();
+            map_of_zeroing.begin();
 
     for(; it != map_of_zeroing.end() ; it++)
     {
@@ -3141,33 +3184,33 @@ void TIFJAnalysis::read_in__user_incrementers()
 #ifdef NIGDY
 
     vector_of_user_incrementers.push_back(
-        new Tuser_incrementer("!suma",
-                              "tpc41_energy_deposit",
-                              Tuser_incrementer::plus,
-                              "tpc42_energy_deposit")
-    );
+                new Tuser_incrementer("!suma",
+                                      "tpc41_energy_deposit",
+                                      Tuser_incrementer::plus,
+                                      "tpc42_energy_deposit")
+                );
 
 
     vector_of_user_incrementers.push_back(
-        new Tuser_incrementer("tof_21_22LL_cal_diff",
-                              "tof_21_41_tof_LL_cal",
-                              Tuser_incrementer::minus,
-                              "tof_22_41_tof_LL_cal")
-    );
+                new Tuser_incrementer("tof_21_22LL_cal_diff",
+                                      "tof_21_41_tof_LL_cal",
+                                      Tuser_incrementer::minus,
+                                      "tof_22_41_tof_LL_cal")
+                );
     //
     vector_of_user_incrementers.push_back(
-        new Tuser_incrementer("tof_21_22RR_cal_diff",
-                              "tof_21_41_tof_RR_cal",
-                              Tuser_incrementer::minus,
-                              "tof_22_41_tof_RR_cal")
-    );
+                new Tuser_incrementer("tof_21_22RR_cal_diff",
+                                      "tof_21_41_tof_RR_cal",
+                                      Tuser_incrementer::minus,
+                                      "tof_22_41_tof_RR_cal")
+                );
     //
     vector_of_user_incrementers.push_back(
-        new Tuser_incrementer("tof_21_22_calculated",
-                              "tof_21_22LL_cal_diff",
-                              Tuser_incrementer::plus,
-                              "tof_21_22RR_cal_diff")
-    );
+                new Tuser_incrementer("tof_21_22_calculated",
+                                      "tof_21_22LL_cal_diff",
+                                      Tuser_incrementer::plus,
+                                      "tof_21_22RR_cal_diff")
+                );
 #endif
     /***
       vector_of_user_incrementers.push_back(
@@ -3189,12 +3232,12 @@ void TIFJAnalysis::read_in__user_incrementers()
         vector<string> names = FH::find_files_in_directory("./incrementers_user_def", ".incr");
 
         Tuser_incrementer::create_all_user_incrementers(names, vector_of_user_incrementers);
-//         // loop which is looking into the directory for a specified definions *.
-//         for(unsigned nr = 0; nr < names.size(); nr++)
-//         {
-//             cout << "User defined incrementer definition file :" << names[nr] << endl;
-//             create_user_incrementer(names[nr]);
-//         }
+        //         // loop which is looking into the directory for a specified definions *.
+        //         for(unsigned nr = 0; nr < names.size(); nr++)
+        //         {
+        //             cout << "User defined incrementer definition file :" << names[nr] << endl;
+        //             create_user_incrementer(names[nr]);
+        //         }
 
 
         // all of them are done now, where is the time when they go to the general list of incrementers?
@@ -3225,7 +3268,7 @@ void TIFJAnalysis::create_user_incrementer(string name_of_description)
     if(extension_starts != string::npos)
     {
         name_without_extension =
-            name_of_description.erase(extension_starts, 100);
+                name_of_description.erase(extension_starts, 100);
     }
 
     // Check if it is not the snake situation
@@ -3257,7 +3300,7 @@ void TIFJAnalysis::create_user_incrementer(string name_of_description)
     {
         cout << "Nesting the incrementers reach the level " << level_of_nesting
              << "\n - it is unrealistic, most probably there is a situation "
-             "\n 'Snake is eating its own tail' " << endl;
+                "\n 'Snake is eating its own tail' " << endl;
         exit(1);
     }
 
@@ -3298,7 +3341,7 @@ void TIFJAnalysis::AddHistogram(TH1 * ptr_spec, const char*)
 //__________________________________________________________________________________________________________
 // Getting the events  from the file
 //__________________________________________________________________________________________________________
-const_daq_word_t*  TGo4MbsFileParameter::give_next_event(int * how_many_words)    // virtual
+const_daq_word_t*  TGo4MbsFileParameter::give_next_event(int * /*how_many_words*/)    // virtual
 {
     //cout << "F. TGo4MbsFileParameter::give_next_event " << endl;
 
@@ -3344,7 +3387,7 @@ top:
 bool TGo4MbsFileParameter::open_file(string filename)
 {
 
-//     cout << "\nTGo4MbsFileParameter::open_file  [" << filename <<"]"<< endl;
+    //     cout << "\nTGo4MbsFileParameter::open_file  [" << filename <<"]"<< endl;
 
     if(filename[0] == '@')      // if this is a list of files to analyse
     {
@@ -3356,7 +3399,7 @@ bool TGo4MbsFileParameter::open_file(string filename)
         if(!plik)
         {
             cout << "Can't open the file " << name_without_at << " with the list of files  --> called " << endl;
-						system("ls");
+            system("ls");
             return false;
         }
 
@@ -3387,6 +3430,7 @@ bool TGo4MbsFileParameter::open_file(string filename)
         cout << "Error while opening the file " << endl;
         exit(1);
     }
+    new_lookup_table_required = true;
 
     if(mbs.get_next_event() != GETEVT__SUCCESS) {
         cout << "Error while reading mbs event" << endl;
@@ -3402,7 +3446,7 @@ bool TGo4MbsFileParameter::open_file(string filename)
         return false;
     }
 
-//     cout << "\nTGo4MbsFileParameter::open_file(string name)      File   " << filename  << "    successfully open for analysis "<< endl;
+    //     cout << "\nTGo4MbsFileParameter::open_file(string name)      File   " << filename  << "    successfully open for analysis "<< endl;
     current_file = filename;
 
     file.seekg(0, ios::end);
@@ -3413,17 +3457,17 @@ bool TGo4MbsFileParameter::open_file(string filename)
 
 #endif
 
-//     cout << " TGo4MbsFileParameter::open_file    ===>   (size = " << file_size << "),  nr_of_file_already_analysed = "
-//          << nr_of_file_already_analysed << endl ;
+    //     cout << " TGo4MbsFileParameter::open_file    ===>   (size = " << file_size << "),  nr_of_file_already_analysed = "
+    //          << nr_of_file_already_analysed << endl ;
 
-//     cout << "1 list_of_names.size() = " << list_of_names.size() << endl;
-//     cout <<"1 buffor to read in is 0x" << hex << ( long ) data << dec<< endl;
+    //     cout << "1 list_of_names.size() = " << list_of_names.size() << endl;
+    //     cout <<"1 buffor to read in is 0x" << hex << ( long ) data << dec<< endl;
 
 
     if(sizeof(daq_word_t)  != 4)
     {
         cerr << "ERROR: on this computer the size of event buffer word is not 4. , so\n "
-             "The programmer should change the definition of typedef const_daq_word_t" << endl;
+                "The programmer should change the definition of typedef const_daq_word_t" << endl;
         exit(__LINE__);
     }
     return true;
@@ -3450,22 +3494,22 @@ top:
 
         if(skipped_files.size())
         {
-          cout << "\n\nNOTE: The List of  *lmd files has been analysed (after " << mbs.give_event_nr()  << " events)\n" 
-          << string (75, '!')
-          << "\nHowever, the files  listed below were impossilble to open (so: skipped )   " << endl;
-          for(unsigned int i = 0 ; i < skipped_files.size() ;++i)
-          {
-            cout << (i +1) << ")    "<< skipped_files[i] << endl;
-          }
-          cout << string (75, '!') << "\n" << endl;
+            cout << "\n\nNOTE: The List of  *lmd files has been analysed (after " << mbs.give_event_nr()  << " events)\n"
+                 << string (75, '!')
+                 << "\nHowever, the files  listed below were impossilble to open (so: skipped )   " << endl;
+            for(unsigned int i = 0 ; i < skipped_files.size() ;++i)
+            {
+                cout << (i +1) << ")    "<< skipped_files[i] << endl;
+            }
+            cout << string (75, '!') << "\n" << endl;
         }
-        else         cout << "ALL Listed files are already analysed after (after " << mbs.give_event_nr()  << " events" << endl;
+        else         cout << "ALL Listed files are already analysed (after " << mbs.give_event_nr()  << " events)" << endl;
         
         Texception_input_file x(myEOF);
         throw x;
     }
 
-//     cout << "222 list_of_names.size()" << list_of_names.size() << endl;
+    //     cout << "222 list_of_names.size()" << list_of_names.size() << endl;
     if(nr_of_file_already_analysed >= list_of_names.size())
     {
         cout << "ALArm - bigger than the vector?" << endl;
@@ -3485,7 +3529,7 @@ top:
 #ifdef MBS_DATAFILE
     mbs.close();
     //cout << "$33 Finished with File nr " << nr_of_file_already_analysed << endl;
-// repair the error state
+    // repair the error state
 
     // repair the stream
     // ??? file.clear(file.rdstate() & ~(ios::eofbit | ios::failbit));
@@ -3494,22 +3538,25 @@ top:
 
     // opening the data file to analyse
     int result = mbs.open( MBS_File,  list_of_names[nr_of_file_already_analysed].c_str());
-if(result == 4)
-{
-   cout << "NO file here " << endl;
-   skipped_files.push_back(list_of_names[nr_of_file_already_analysed]);
-   goto top;
-}
+    if(result == 4)
+    {
+        cout << "NO file here " << endl;
+        skipped_files.push_back(list_of_names[nr_of_file_already_analysed]);
+        goto top;
+    }
 
     else if(result != 0)
     {
         cout << "error while opening a new mbs file called "
              << list_of_names[nr_of_file_already_analysed] << endl;
-             Texception_input_file x(myFAIL);
-             throw x;
+        Texception_input_file x(myFAIL);
+        throw x;
     }
     
     current_file = list_of_names[nr_of_file_already_analysed];
+    new_lookup_table_required = true;
+
+
     // if successful,
     return true;
 #else
@@ -3531,7 +3578,7 @@ if(result == 4)
         throw x;
     }
     cout << "File " << list_of_names[nr_of_file_already_analysed]
-         << " successfully open for analysis " << endl;
+            << " successfully open for analysis " << endl;
 
     file.seekg(0, ios::end);
     file_size = file.tellg();

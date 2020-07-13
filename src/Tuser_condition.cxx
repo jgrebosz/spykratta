@@ -83,7 +83,8 @@ void Tuser_condition::read_in_parameters(string s)
                  "Please go to the cracow viewer now, open the definition of this condition\n"
                  "and choose one of the available incrementers"
                  << endl;
-            exit(1);
+            std::runtime_error  e("Fix above mentioned error and start again");
+            throw e;
         }
 
         condition_item_1D_AND.push_back(tmp) ;
@@ -132,7 +133,8 @@ void Tuser_condition::read_in_parameters(string s)
                  "Please go to the cracow viewer now, open the definition of this condition\n"
                  "and choose one of the available incrementers"
                  << endl;
-            exit(1);
+            std::runtime_error  e("Fix above mentioned error and start again");
+            throw e;
         }
 
         condition_item_1D_OR.push_back(tmp) ;
@@ -183,7 +185,8 @@ void Tuser_condition::read_in_parameters(string s)
                     "and choose one of the available incrementers"
                     << endl;
 
-            exit(1);
+            std::runtime_error  e("Fix above mentioned error and start again");
+            throw e;
         }
 
         // Y variable ----------------
@@ -213,7 +216,8 @@ void Tuser_condition::read_in_parameters(string s)
                     "and choose one of the available incrementers"
                     << endl;
 
-            exit(1);
+            std::runtime_error  e("Fix above mentioned error and start again");
+            throw e;
         }
 
 
@@ -224,10 +228,11 @@ void Tuser_condition::read_in_parameters(string s)
         {
             cout << "During Reading-in the condition named "
                  << desc.give_name()
-                 << "\n  Impossible to read polygon gate: " << tmp.polygon_name
+                 << "\n  [C] Impossible to read polygon gate: " << tmp.polygon_name
                  << "\nMost probably it does not exist (anymore?)"
                  << endl;
-            exit(1);
+            std::runtime_error  e("Fix above mentioned error and start again");
+            throw e;
 
         };
 
@@ -274,7 +279,8 @@ void Tuser_condition::read_in_parameters(string s)
                     "and choose one of the available incrementers"
                     << endl;
 
-            exit(1);
+            std::runtime_error  e("Fix above mentioned error and start again");
+            throw e;
         }
 
         // Y variable ----------------
@@ -304,7 +310,9 @@ void Tuser_condition::read_in_parameters(string s)
                     "and choose one of the available incrementers"
                     << endl;
 
-            exit(1);
+            std::runtime_error  e("Fix above mentioned error and start again");
+            throw e;
+            //exit(1);
         }
 
 
@@ -315,11 +323,14 @@ void Tuser_condition::read_in_parameters(string s)
         {
             cout << "During Reading-in the condition named "
                  << desc.give_name()
-                 << "\n  Impossible to read polygon gate: "
+                 << "\n  [D] Impossible to read polygon gate: "
                  << tmp.polygon_name
-                 << "\nMost probably it does not exist (anymore?)"
+                 << "\nMost probably it does not exist (anymore?)\n\n"
+                    "Finishing the program, you must fix this error now..."
                  << endl;
-            exit(1);
+            std::runtime_error  e("Fix above mentioned error and start again");
+            throw e;
+            //exit(1);
 
         };
 
@@ -795,7 +806,9 @@ void Tuser_condition::read_in_AND_node()
                  << give_name()
                  << ") does not exist on the disk "
                  << endl;
-            exit(1) ;
+            std::runtime_error  e("Fix above mentioned error and start again");
+            throw e;
+            //exit(1) ;
         }
         other_condition_AND_ptr.push_back(cond);
     }
@@ -829,7 +842,9 @@ void Tuser_condition::read_in_OR_node()
                  << give_name()
                  << ") does not exist on the disk "
                  << endl;
-            exit(1) ;
+            std::runtime_error  e("Fix above mentioned error and start again");
+            throw e;
+            //exit(1) ;
         }
         other_condition_OR_ptr.push_back(cond);
     }
@@ -861,7 +876,9 @@ void Tuser_condition::read_in_NAND_node()
                  << give_name()
                  << ") does not exist on the disk "
                  << endl;
-            exit(1) ;
+            std::runtime_error  e("Fix above mentioned error and start again");
+            throw e;
+            // exit(1) ;
         }
         other_condition_NAND_ptr.push_back(cond);
     }
@@ -895,7 +912,9 @@ void Tuser_condition::read_in_NOR_node()
                  << give_name()
                  << ") does not exist on the disk "
                  << endl;
-            exit(1) ;
+            std::runtime_error  e("Fix above mentioned error and start again");
+            throw e;
+            // exit(1) ;
         }
         other_condition_NOR_ptr.push_back(cond);
     }

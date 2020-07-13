@@ -32,7 +32,7 @@ void Tpisolo_si_final::create_my_spectra()
 
     //-----------
     string name = name_of_this_element + "_energy_raw"  ;
-    spec_e_raw = new spectrum_1D(name, name,
+    spec_e_raw = new spectrum_1D(name,
                                  4095, 1, 4096,
                                  folder, "", noraw);
     frs_spectra_ptr->push_back(spec_e_raw) ;
@@ -40,7 +40,6 @@ void Tpisolo_si_final::create_my_spectra()
 
     name = name_of_this_element + "_energy_cal"  ;
     spec_e_cal = new spectrum_1D(name,
-                                 name,
                                  4095, 1, 4096,
                                  folder,
                                  "calibrated",

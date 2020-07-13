@@ -23,7 +23,7 @@
 
 
 //*************************************************************************
-void TIFJCalibratedEvent::Clear(string  t)
+void TIFJCalibratedEvent::Clear(string  /*t*/)
 {
 //     TRACE((11,"TIFJCalibratedEvent::Clear()",__LINE__, __FILE__));
 
@@ -85,7 +85,7 @@ TIFJCalibratedEvent::TIFJCalibratedEvent()
 }
 /** No descriptions ***********************************************************/
 // DUMMY FUNCTION
-void TIFJCalibratedEvent::set_value(double v)
+void TIFJCalibratedEvent::set_value(double /*v*/)
 {
     /*
        cate_dE = v ;

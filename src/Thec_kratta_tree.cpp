@@ -21,15 +21,22 @@ extern TIFJAnalysis *RisingAnalysis_ptr;
 // extern TIFJEvent * target_event;
 //*********************************************************************
 Thec_kratta_tree::Thec_kratta_tree(std::string my_name,
-                                   int16_t (TIFJEvent::*hector_tdc_data_ptr_a)[32],
-                                   int16_t (TIFJEvent::*hector_adc_data_ptr_a)[32],
-                                   int16_t (TIFJEvent::*kratta_data_ptr_a) [KRATTA_NR_OF_CRYSTALS][9]
+                                   int16_t (TIFJEvent::*hector_tdc_data_ptr_a)[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS],
+                                   int16_t (TIFJEvent::*hector_adc_data_ptr_a)[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS],
+                                    int16_t (TIFJEvent::*phoswich_tdc_data_ptr_a)[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS],
+                                    int16_t (TIFJEvent::*phoswich_adc_data_ptr_a)[PLASTIC_HOW_MANY_TDC_ADC_CHANNELS],
+                                   int16_t (TIFJEvent::*kratta_data_ptr_a) [KRATTA_NR_OF_CRYSTALS][9],
+                                    int16_t (TIFJEvent::*plastic_data_ptr_a) [KRATTA_NR_OF_PLASTICS]
                                   ):
 
     Tfrs_element(my_name),
     hector_tdc_data_ptr(hector_tdc_data_ptr_a),
     hector_adc_data_ptr(hector_adc_data_ptr_a),
-    kratta_data_ptr(kratta_data_ptr_a)
+    phoswich_tdc_data_ptr(phoswich_tdc_data_ptr_a),
+    phoswich_adc_data_ptr(phoswich_adc_data_ptr_a),
+    kratta_data_ptr(kratta_data_ptr_a),
+    plastic_data_ptr(plastic_data_ptr_a)
+
 {
 }
 //*********************************************************************
@@ -88,10 +95,11 @@ void Thec_kratta_tree::make_preloop_action(ifstream &)  // read the calibration 
 
 
 
-        TIFJEvent *ev = event_unpacked;
+        // TIFJEvent *ev = event_unpacked;
 
         ostringstream s;
         s << "hector_adc[32]/s:hector_tdc[32]/s"
+             << ":phoswich_adc[32]/s:phoswich_tdc[32]/s"
           << ":kratta_s1[" << 	KRATTA_NR_OF_CRYSTALS << "]/s1"
           << ":kratta_s2[" << 	KRATTA_NR_OF_CRYSTALS << "]/s"
           << ":kratta_s3[" << 	KRATTA_NR_OF_CRYSTALS << "]/s"
@@ -102,7 +110,21 @@ void Thec_kratta_tree::make_preloop_action(ifstream &)  // read the calibration 
 
           << ":kratta_t1[" << 	KRATTA_NR_OF_CRYSTALS << "]/s"
           << ":kratta_t2[" << 	KRATTA_NR_OF_CRYSTALS << "]/s"
-          << ":kratta_t3[" << 	KRATTA_NR_OF_CRYSTALS << "]/s" ;
+          << ":kratta_t3[" << 	KRATTA_NR_OF_CRYSTALS << "]/s"
+
+//          << ":plastic_s1[" << 	KRATTA_NR_OF_PLASTICS << "]/s1"
+//          << ":plastic_s2[" << 	KRATTA_NR_OF_PLASTICS << "]/s"
+//          << ":plastic_s3[" << 	KRATTA_NR_OF_PLASTICS << "]/s"
+
+//          << ":plastic_p1[" << 	KRATTA_NR_OF_PLASTICS << "]/s1"
+//          << ":plastic_p2[" << 	KRATTA_NR_OF_PLASTICS << "]/s"
+//          << ":plastic_p3[" << 	KRATTA_NR_OF_PLASTICS << "]/s"
+
+//          << ":plastic_t1[" << 	KRATTA_NR_OF_PLASTICS << "]/s"
+//          << ":plastic_t2[" << 	KRATTA_NR_OF_PLASTICS << "]/s"
+//          << ":plastic_t3[" << 	KRATTA_NR_OF_PLASTICS << "]/s"   ;
+          << ":plastic_time[" << 	KRATTA_NR_OF_PLASTICS << "]/s1";
+//          << ":plastic_energy[" << 	KRATTA_NR_OF_PLASTICS << "]/s" ;
 
         string format = s.str();
 
@@ -132,6 +154,8 @@ void Thec_kratta_tree::analyse_current_event()
         for(int i = 0 ; i < 32 ; ++i) {
             PUT(hector_adc[i]);
             PUT(hector_tdc[i]);
+            PUT(phoswich_adc[i]);
+            PUT(phoswich_tdc[i]);
         }
 
         for(int i = 0 ; i < KRATTA_NR_OF_CRYSTALS ; ++i) {
@@ -148,6 +172,16 @@ void Thec_kratta_tree::analyse_current_event()
             store.kratta_t2[i] = event_unpacked->kratta[i][8];
         }
 
+
+        for(int i = 0 ; i < KRATTA_NR_OF_PLASTICS ; ++i) {
+            if(event_unpacked->plastic[i] < 20000)
+            store.plastic_time[i] = event_unpacked->plastic[i];
+
+//            if(store.plastic_time[i] )
+//            cout << "wlozone do tree root plastic " << i
+//                    << " time = " <<
+//                    event_unpacked->plastic[i][0] << endl;
+        }
         /*
         PUT(ppacA_x_right);
         PUT(ppacA_y_up);
@@ -161,6 +195,7 @@ void Thec_kratta_tree::analyse_current_event()
 
         if(tree) {
             tree->Fill();
+
         } else {
             cout << __func__ << "Error: tree pointer is nullptr " << endl;
         }
@@ -176,6 +211,7 @@ void Thec_kratta_tree::analyse_current_event()
                  << "\n   I am  doing it, but this slows down the analysis..." << endl;
 
             last = now ;
+            tree->OptimizeBaskets(); // Basia Wasilewska ask for this
         }
 
     } // endif

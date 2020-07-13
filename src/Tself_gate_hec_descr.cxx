@@ -1,3 +1,6 @@
+NOT USED - the right one is with extension *.cpp
+
+
 /***************************************************************************
                           Tself_gate_hec_descr.cpp  -  description
                              -------------------
@@ -15,7 +18,7 @@
 //********************************************************************
 Tself_gate_hec_descr::Tself_gate_hec_descr()
 {
-
+1 2 3
     type = Hector_BaF_crystal ; // this is hector
     enable_energy_fast_gate = false ;
     en_fast_gate[0] = 0 ;

@@ -22,7 +22,7 @@
 #include "Tself_gate_ger_descr.h"
 #include "Tself_gate_hec_descr.h"
 #include "Tself_gate_mib_descr.h"
-#include "paths.h"
+#include "Tself_gate_kratta_descr.h"
 
 
 //*****************************************************************************
@@ -50,10 +50,11 @@ Tself_gate_abstract_descr *Tself_gate_abstract_descr::create_descr_for_sg_file(s
         case Tselfgate_type::miniball:   d = new Tself_gate_mib_descr ; break;
         case Tselfgate_type::cluster_addback:   d = new Tself_gate_ger_addback_descr ; break;
         case Tselfgate_type::agata_psa:   d = new Tself_gate_agata_psa_descr ; break;
+        case Tselfgate_type::kratta:   d = new Tself_gate_kratta_descr ; break;
 
     }
 
-//     d->read_definition_from(path.conditions + sg_name);
+    // d->read_definition_from(path.conditions + sg_name);
    d->read_definition_from("./conditions/" + sg_name);
     return d;
 }

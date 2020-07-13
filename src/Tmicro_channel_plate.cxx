@@ -28,14 +28,14 @@ void Tmicro_channel_plate::create_my_spectra()
 
     //-----------
     string name = name_of_this_element + "_x_raw"  ;
-    spec_x_raw = new spectrum_1D(name, name,
+    spec_x_raw = new spectrum_1D(name,
                                  4095, 1, 4096,
                                  folder, "", noraw);
     frs_spectra_ptr->push_back(spec_x_raw) ;
 
     //-----------
     name = name_of_this_element + "_y_raw"  ;
-    spec_y_raw = new spectrum_1D(name, name,
+    spec_y_raw = new spectrum_1D(name,
                                  4095, 1, 4096,
                                  folder, "", noraw);
     frs_spectra_ptr->push_back(spec_y_raw) ;
@@ -48,7 +48,6 @@ void Tmicro_channel_plate::create_my_spectra()
     // X------------------------------------
     name = name_of_this_element + "_x_cal"  ;
     spec_x_cal = new spectrum_1D(name,
-                                 name,
                                  400, -150, 150,
                                  folder,
                                  "in milimeters",
@@ -58,7 +57,6 @@ void Tmicro_channel_plate::create_my_spectra()
     // Y------------------------------------
     name =  name_of_this_element + "_y_cal"  ;
     spec_y_cal = new spectrum_1D(name,
-                                 name,
                                  400, -150, 150,
                                  folder,
                                  "in milimeters",
@@ -69,7 +67,6 @@ void Tmicro_channel_plate::create_my_spectra()
     name =  name_of_this_element + "_xy"  ;
 
     spec_xy = new spectrum_2D(name,
-                              name,
                               400, -150, 150,
                               400, -150, 150,
                               folder, "",

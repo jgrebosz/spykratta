@@ -2,7 +2,7 @@
 #include "calCoef.h"
 #include "Tfile_helper.h"
 
-istream & zjedz(istream & plik);
+//istream & zjedz(istream & plik);
 //*************************************************************************
 calManager::calManager(string filename, int dependent)
 {

@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <signal.h>
 
+#if NEVER
+
 //static char *locklinkname = "spylock";
 string locklinkname = "spylock";
 static char lockfilename[256];
@@ -64,7 +66,7 @@ static bool create_lock()
 }
 //*********************************************************************
 // handle SIGTERM, SIGINT, SIGHUP
-static void termination_handler(int signum)
+static void termination_handler(int /*signum*/)
 {
     //remove_lock(); is done by exit (via atexit call in setup_lock)
     exit(0);
@@ -73,6 +75,7 @@ static void termination_handler(int signum)
 // try to create a lockfile and terminate program, if that fails
 // otherwise prepare for lockfile deletion at exit
 //*********************************************************************
+
 static void setup_lock()
 {
     bool locked = create_lock();
@@ -96,4 +99,5 @@ static void setup_lock()
     signal(SIGTERM, termination_handler);
     printf("done.\n");
 }
+#endif // NEVER
 //*********************************************************************

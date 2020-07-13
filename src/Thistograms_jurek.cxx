@@ -6,6 +6,7 @@
 /////////////////////////////////////////////////////////////////
 
 #include "Thistograms_jurek.h"
+//constexpr
 bool flag_talking_histograms;
 //______________________________________________________________________________
 int TAxis::FindBin(double x)
@@ -60,6 +61,7 @@ int TH1::Fill(double value, double weight)
     AddBinContent(bin, weight) ;// increment by weight
     return  bin;
 }
+//int TH1::Fill(double x, double y, int value) {}
 //******************************************************************
 void TH1::SetBinContent(int binx, int biny, int binz, content_type content)
 {
@@ -160,6 +162,7 @@ int TH1::GetBin(int binx, int biny, int binz) const
 //**********************************************************************************
 
 
+#ifdef NEVER
 //_____________________________________________________________________________
 Int_t TH1::BufferEmpty(Int_t action)
 {
@@ -240,9 +243,105 @@ Int_t TH1::BufferEmpty(Int_t action)
     return 0; // as fake
 
 }
+#endif // NEVER
 //*****************************************************
 //  int TH1I::GetBinContent ( int binx, int biny )
 //     {
 //         cout << "abstrakcyjna f. TH1::GetBinContent(int, int) " << endl;
 //         return 0;
 //     }
+
+
+int TH2I::Fill(double x, double y)
+{
+    //cout << "2::Fill(double x, double y) " << endl;
+
+    // recalculate x and y to know which bin it is
+
+    //*-*-*-*-*-*-*-*-*-*-*Increment cell defined by x,y by 1*-*-*-*-*-*-*-*-*-*
+    //*-*                  ==================================
+    //*-*
+    //*-* if x or/and y is less than the low-edge of the corresponding axis first bin,
+    //*-*   the Underflow cell is incremented.
+    //*-* if x or/and y is greater than the upper edge of corresponding axis last bin,
+    //*-*   the Overflow cell is incremented.
+    //*-*
+    //*-* If the storage of the sum of squares of weights has been triggered,
+    //*-* via the function Sumw2, then the sum of the squares of weights is incremented
+    //*-* by 1 in the cell corresponding to x,y.
+    //*-*
+    //*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+    //if (fBuffer) return BufferFill(x,y,1);
+
+    //    Int_t binx, biny, bin;
+    //    fEntries++;
+    int binx = fXaxis.FindBin(x);
+    int biny = fYaxis.FindBin(y);
+    int bin  = biny * (fXaxis.GetNbins() + 2) + binx;
+    if(flag_talking_histograms)
+    {
+        cout << "Before incrementation , binx = "
+             << binx
+             << ", biny = " << biny
+             << ", bin = " << bin << endl;
+    }
+    AddBinContent(bin);
+    //    if (fSumw2.fN) ++fSumw2.fArray[bin];
+    if(binx == 0 || binx > fXaxis.GetNbins())
+    {
+        //       if (!fgStatOverflows)
+        return -1;
+    }
+    if(biny == 0 || biny > fYaxis.GetNbins())
+    {
+        //       if (!fgStatOverflows)
+        return -1;
+    }
+    //    ++fTsumw;
+    //    ++fTsumw2;
+    //    fTsumwx  += x;
+    //    fTsumwx2 += x*x;
+    //    fTsumwy  += y;
+    //    fTsumwy2 += y*y;
+    //    fTsumwxy += x*y;
+    return bin;
+
+}
+//******************************************************************************
+
+int TH2I::Fill(double x, double y, int value)
+{
+
+    int binx = fXaxis.FindBin(x);
+    int biny = fYaxis.FindBin(y);
+    int bin  = biny * (fXaxis.GetNbins() + 2) + binx;
+    if(flag_talking_histograms)
+    {
+        cout << "Before incrementation , binx = "
+             << binx
+             << ", biny = " << biny
+             << ", bin = " << bin << endl;
+    }
+    AddBinContent(bin, value);
+    //    if (fSumw2.fN) ++fSumw2.fArray[bin];
+    if(binx == 0 || binx > fXaxis.GetNbins())
+    {
+        //       if (!fgStatOverflows)
+        return -1;
+    }
+    if(biny == 0 || biny > fYaxis.GetNbins())
+    {
+        //       if (!fgStatOverflows)
+        return -1;
+    }
+    //    ++fTsumw;
+    //    ++fTsumw2;
+    //    fTsumwx  += x;
+    //    fTsumwx2 += x*x;
+    //    fTsumwy  += y;
+    //    fTsumwy2 += y*y;
+    //    fTsumwxy += x*y;
+    return bin;
+
+}

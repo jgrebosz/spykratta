@@ -37,15 +37,15 @@ mbs_listner::~mbs_listner()
 int mbs_listner::open( MBS_StreamType type, string name )
 {
 //     cout << __func__ << endl;
-    int result = f_evt_get_open ( type, ( char* ) name.c_str(),
+    int result = f_evt_get_open ( type, (char*) name.c_str(),
                                   &input_channel,
-                                  ( CHARS** ) NULL, //&file_header,   // Jesli noe NULL, to tu przyjdzie informacja o file, lub pli
+                                  ( CHARS** ) NULL, //&file_header,   // Jesli nie NULL, to tu przyjdzie informacja o file, lub pli
                                   1, 	// co ktory blok danych
                                   0 );    	// nie uzywany parametr
 
     if ( result != GETEVT__SUCCESS )
     {
-      cout << "Cant open the file " << name.c_str() << ": code for error is " << result
+      cout << "Can't open the file " << name.c_str() << ": code for error is " << result
       << endl;
       string explanation ;
 switch(result)
@@ -138,10 +138,10 @@ int mbs_listner::get_next_subevent_if_any()
 
 //             cout << "Sukces f_evt_get_subevent  wiec rozpakowanie eventu typu "
 //                  << " l_dlen w bajtach = " << subevent_header_ptr->l_dlen
-// 
+
 //                  << " i_subtype= " << subevent_header_ptr->i_subtype
 //                  << " i_type= " << subevent_header_ptr->i_type
-// 
+
 //                  << " h_control= " << (int) subevent_header_ptr->h_control
 //                  << " h_subcrate= " << (int) subevent_header_ptr->h_subcrate
 //                  << " procid= " << subevent_header_ptr->i_procid << endl;

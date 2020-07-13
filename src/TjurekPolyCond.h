@@ -21,7 +21,7 @@ class TjurekPolyCond
     bool enabled;
 public:
     TjurekPolyCond();
-    TjurekPolyCond(string name_, string title = "Go4 polygon condition")
+    TjurekPolyCond(string name_)
         : name(name_)
     { }
 
@@ -34,10 +34,15 @@ public:
         ostringstream  output ;
         for(unsigned int i = 0 ; i < x_points.size() ; i++)
         {
-        output << i << " ---> [" << x_points[i] << " " << y_points[i] <<"]\n";
+            output << i << " ---> [" << x_points[i] << " " << y_points[i] <<"]\n";
         }
         return output.str();
         
+    }
+    void give_point_vectors(vector<double> &x, vector<double> &y)
+    {
+        x = x_points;
+        y = y_points;
     }
 
     /** Test if X,Y are inside. */

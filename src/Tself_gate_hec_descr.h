@@ -14,6 +14,7 @@
 using namespace std;
 
 #include "Tself_gate_abstract_descr.h"
+#include "TjurekPolyCond.h"
 
 
 /**Text file which describes the gate on the germanium crystal
@@ -33,6 +34,13 @@ public:
 
   bool enable_time_gate ;
   double time_gate[2];
+
+
+  // ---------------- for polygon gate on energy vs time (one of  three times)
+  bool  enable_fast_vs_slow_polygon_gate;
+  string name_fast_vs_slow_polygon_gate;
+  TjurekPolyCond * polygon ;
+
 
   bool enable_geom_theta_gate ;
   double geom_theta_gate[2];

@@ -22,36 +22,38 @@ using namespace std;
  */
 struct kwartet
 {
-    //#FADC CHAN -> MODULE    SIGNAL(Photodiode#)   OK_FLAG    LABEL
+    //#  FADC CHAN ----> MODULE    SIGNAL(Photodiode#)   is_it_plastic?    LABEL
 public:
-    short int module;
-    short int signal;
-    bool   ok_flag;
+    short int detector_id;  // i.e. kratta_01
+    short int subdetector;   // i.e. pd1
+    bool   flag_plastic;
     string label ;
 
-    kwartet(short m = -1, short s = -1, bool f = false, string lab = "" ) : module {m}, signal {s}, ok_flag(f), label {lab}
+    kwartet(short m = -1, short ch = -1, bool f = false, string lab = "" ) :
+        detector_id {m}, subdetector {ch}, flag_plastic(f), label {lab}
     {} ;
 };
 
 /////////////////////////////////////////////////////////////////////////////
 class Tlookup_table_kratta
 {
-    //vector<vector< vector< triplet > > >table;
+    map<int, kwartet>  mapka;  // vector of maps
 
-    map<int, kwartet>   mapka;
     const int koding_factor = 16;
 public:
     Tlookup_table_kratta();
-    /** Reading the settings, which experimetnator stored on the disk */
+    /** Reading the settings, which experimenter stored on the disk */
     void read_from_disk(string filename);
     ~Tlookup_table_kratta();
-    /** prepares the resutlts, if not found - retruns bool = false
+    /** prepares the results, if not found - returns bool = false
     		If found = true, the you can call inline functions for
     		getting the results */
     kwartet current_combination(int fadc, int channel);
 
-
 protected: // Protected attributes
+    int current_active_map_in_the_atlas;
+    void focus_on_map_nr(int nr) { current_active_map_in_the_atlas = nr;}
+
 
     int koding_key(int f, int c) {
         return (f << koding_factor) + c;

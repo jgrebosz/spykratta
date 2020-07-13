@@ -12,7 +12,7 @@ TIFJEvent * Tfrs_element::event_unpacked ;  // static,
 string noraw("Raw values are (very often) not defined as incrementers  - too many of them. You can try to find them as vme incrementers (see the lookup table)");
 
 string noinc =
-    "No such incrementer defined. Ask Jurek if you really need it";
+    "No_such_incrementer_defined";
 
 // Done incrementers list   for
 // MW, Tscintill, Taoq_calculator, Tbonn_magnet, Tdegrader, Tmusic_8_anodes

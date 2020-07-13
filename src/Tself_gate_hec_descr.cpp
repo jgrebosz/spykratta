@@ -29,6 +29,11 @@ Tself_gate_hec_descr::Tself_gate_hec_descr()
     time_gate[0] = 0;
     time_gate[1] = 8192;
 
+    // ---------------- for polygon gate on energy vs time (one of  three times)
+    enable_fast_vs_slow_polygon_gate = false;
+    name_fast_vs_slow_polygon_gate = "no_polygon";
+
+
     //---------------    ????????????? degrees
     enable_geom_theta_gate = false ;
     geom_theta_gate[0] = 0;
@@ -93,6 +98,59 @@ void Tself_gate_hec_descr::read_definition_from(string pathed_name)
 
         en_slow_gate[0] = fif(plik, "en_slow_gate_low");
         en_slow_gate[1] = fif(plik, "en_slow_gate_high");
+
+
+        polygon = nullptr;
+        try    // because this may not exist in old selfgates
+        {
+            enable_fast_vs_slow_polygon_gate = fif(plik, "enable_fast_vs_slow_polygon_gate");
+
+
+            // for banana  on energy vs time
+            try
+            {
+
+
+
+
+                if(enable_fast_vs_slow_polygon_gate)
+                {
+                    Tfile_helper::spot_in_file(plik, "name_fast_vs_slow_polygon_gate");
+                    plik >> name_fast_vs_slow_polygon_gate;
+                    if(name_fast_vs_slow_polygon_gate == "no_polygon")
+                    {
+                        throw "nic";
+                    }
+
+
+                    // reading the polygon
+                    if(!read_banana(name_fast_vs_slow_polygon_gate,   &polygon))
+                    {
+                        cout << "During Reading-in the self gate named "
+                             << name
+                             << "\n  [B] Impossible to read polygon gate: " << name_fast_vs_slow_polygon_gate
+                             << "\nMost probably it does not exist (anymore?)"
+                             << endl;
+                        exit(1);
+                    }
+                }
+            }
+            catch(...)
+            {
+                enable_fast_vs_slow_polygon_gate  = false;
+                name_fast_vs_slow_polygon_gate = "no_polygon";
+                Tfile_helper::repair_the_stream(plik);
+            }
+
+
+        }
+        catch(Tno_keyword_exception & ex)
+        {
+            // defaults are used
+            enable_fast_vs_slow_polygon_gate = false;
+            name_fast_vs_slow_polygon_gate = "no_polygon";
+            Tfile_helper::repair_the_stream(plik);
+        }
 
 
         enable_time_gate = (bool) fif(plik, "enable_time_gate");
@@ -170,6 +228,12 @@ void Tself_gate_hec_descr::write_definitions(string path_only)
             << "enable_energy_slow_gate\t\t" << enable_energy_slow_gate
             << "\ten_slow_gate_low\t"  << en_slow_gate[0]
             << "\ten_slow_gate_high\t" << en_slow_gate[1] << "\t// eneryg SLOW gate\n"
+
+
+               << "enable_fast_vs_slow_polygon_gate\t" << enable_fast_vs_slow_polygon_gate  << "\n"
+               << "\tname_fast_vs_slow_polygon_gate\t" << name_fast_vs_slow_polygon_gate  << "\n"
+
+
 
             << "enable_time_gate\t\t" << enable_time_gate
             << "\ttime_gate_low\t"  << time_gate[0]

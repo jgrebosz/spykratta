@@ -56,7 +56,7 @@ class TIFJCalibratedEvent;
 class TIFJCalibrateProcessor : public TjurekAbstractEventProcessor // : public TGo4EventProcessor
 {
 public:
-    int event_nr ; ;
+    int event_nr ;
     // #### Rising stuff ###############################################################
 public:
     TIFJCalibrateProcessor() ;

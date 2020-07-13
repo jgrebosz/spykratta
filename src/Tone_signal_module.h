@@ -2,11 +2,6 @@
 #define _one_signal_module_H_
 
 
-// this conditional compilation below had to be introduced
-// because the dictionary was wrongly created when I introduced
-// the poiters to the members of the TIFJEvent class
-#ifndef  __CINT__
-
 
 
 #include "Tfrs_element.h"
@@ -16,34 +11,40 @@
 #include "TIFJEvent.h"
 #include "Tincrementer_donnor.h"
 
-//class focus_point ;
+
 
 //////////////////////////////////////////////////////////////////////////////
+/// \brief The Tone_signal_module class
+//template <typename Type = uint16_t>
+
+
+template <typename T = uint16_t>
 class Tone_signal_module : public Tfrs_element , public Tincrementer_donnor
 {
 
-    unsigned int unsigned_signal_data;
-    int signed_signal_data;
+    double double_signal_data;
+    //T signed_signal_data;
 
     // pointer to members of event class
     // it must be done like that, because the event does not
     // exist yet. It will be produced by the factory
     // in the moment of running the analysis.
 
-    int TIFJEvent::*signal_ptr;
-
+public:
+//    int16_t TIFJEvent::*signal_ptr;
+    T *signal_ptr;
+protected:
     spectrum_1D * spec_first ;
     string signal_description;
 public:
     //  constructor
-    Tone_signal_module(string _name, int TIFJEvent::*first_ptr, string description = "signal") ;
-
+    Tone_signal_module(string _name, T *first_ptr, string description = "signal") ;
 
     void analyse_current_event() ;
     void make_preloop_action(ifstream &);   // read the calibration factors, gates
-    int give_value()
+    double give_value()
     {
-        return signed_signal_data;
+        return double_signal_data;
     }
 
 protected:
@@ -52,7 +53,6 @@ protected:
 };
 
 /////////////////////////////////////////////////////////////////////////
-
-#endif // CINT
+#include <Tone_signal_module.cxx>
 
 #endif // _one_signal_module_H_

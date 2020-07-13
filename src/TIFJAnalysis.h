@@ -26,7 +26,8 @@
 #include <ctime> // zeroing time
 #include "Tuser_incrementer.h"
 
-#include "Thector.h"
+//#include "Thector.h"
+//#include "Tparis.h"
 
 #include "mbs_listner.h"
 
@@ -68,6 +69,8 @@ class TGo4EventSourceParameter
 {
 protected:
     int nr_of_current_event;
+    bool new_lookup_table_required = true;
+
 public:
     TGo4EventSourceParameter() : nr_of_current_event(0)
     {}
@@ -83,7 +86,17 @@ public:
     {
         return nr_of_current_event;
     }
-    virtual std::string  give_name_of_source()=0;
+    virtual std::string  give_name_of_source()=0;     
+
+    virtual bool is_new_lookup_table_required()  // to install new lookup table
+    {
+        return new_lookup_table_required;
+    }
+    virtual void new_lookup_table_just_installed()  // to inform that just installed
+    {
+        new_lookup_table_required = false;
+    }
+
 //     {
 //         return "abstract ???" ;
 //     }
@@ -157,6 +170,7 @@ class TGo4MbsFileParameter  : public TGo4EventSourceParameter   // to jest gdy e
     vector<daq_word_t>  data_buffer;
 
     string current_file;  // from agata
+
     long long file_size ;
     //   int length_of_data_block;
 
@@ -244,7 +258,7 @@ public:
     }
 
     // Getting the events  from the file_________________________________
-    const_daq_word_t*  give_next_event(int *how_many_words);     // virtual
+    const_daq_word_t*  give_next_event(int *);     // virtual
     const_daq_word_t*  give_next_old_pisolo_event(int *how_many_words);
 
     const_daq_word_t*  give_next_mbs_event(int *how_many_words);
@@ -256,6 +270,14 @@ public:
     {
         return current_file;
     }
+    bool is_new_lookup_table_required()  // to install new lookup table
+    {
+        return new_lookup_table_required;
+    }
+    void new_lookup_table_just_installed()  // to install new lookup table
+    {
+        new_lookup_table_required = false;
+    }
 
 };
 //**************************************************
@@ -264,11 +286,11 @@ class TGo4FileStoreParameter
 {
     string file_name;
 public:
-    TGo4FileStoreParameter(string nam, int val = 0)
+    TGo4FileStoreParameter(string nam, int /* val*/ = 0)
         : file_name(nam)
     {}
 
-    void SetOverwriteMode(bool v)
+    void SetOverwriteMode(bool /* v */)
     {
         // empty so far
     }
@@ -282,7 +304,7 @@ class TGo4EventProcessorParameter
 class TGo4FileSourceParameter
 {
 public:
-    TGo4FileSourceParameter(string name)
+    TGo4FileSourceParameter(string /*name*/)
     {}
 }
 ;
@@ -324,13 +346,13 @@ public:
     {
         enabled  = t;
     }
-    void SetStoreEnabled(bool t)
+    void SetStoreEnabled(bool /*t*/)
     {}   // leave it true, even it will be disabled, otherwise the file
     // is not opened, and enabling later will not be possible - this is my observation JG
 
-    void SetProcessEnabled(bool t)
+    void SetProcessEnabled(bool /*t*/)
     {}
-    void SetErrorStopEnabled(bool t)
+    void SetErrorStopEnabled(bool /*t*/)
     {}
 
     void Process()
@@ -374,8 +396,8 @@ public:
     {
         frs.analyse_current_event();
 #ifdef HECTOR_PRESENT	
-	hector.analyse_current_event();
-	#endif 
+//	hector.analyse_current_event();
+#endif
     }
 
     void make_watchdog_step()
@@ -408,10 +430,10 @@ public:
 
     void SetAutoSaveFile(string nazwa)
     {
-        cout << "empty f. SetAutoSaveFile" << endl;
+        cout << "empty f. SetAutoSaveFile " << nazwa << endl;
     }
 
-    void SetAutoSaveInterval(int value)
+    void SetAutoSaveInterval(int /*value*/)
     { }
 
 
@@ -423,11 +445,11 @@ public:
 
     void RemoveHistogram(string name_root)
     {
-        cout << "Empty f. RemoveHistogram() " << endl;
+        cout << "Empty f. RemoveHistogram() " << name_root << endl;
     }
     void AddHistogram(string name_root)
     {
-        cout << "Empty f. AddHistogram() " << endl;
+        cout << "Empty f. AddHistogram() " << name_root << endl;
     }
     void AddHistogram(TH1* ptr_spec, const char*);
 
@@ -492,6 +514,7 @@ public:
     Tfrs          frs ;      //!     fragment separtor + target +cate
 
 #ifdef HECTOR_PRESENT
+#if 0
     Thector       hector ;   //!
 
 
@@ -499,6 +522,18 @@ public:
     {
         return &hector ;
     }
+#endif
+
+
+
+#if 0
+       Tparis       paris ;   //!
+    Tparis * give_paris_ptr()
+    {
+        return &paris ;
+    }
+#endif
+
 #endif
 
     /** perhaps it was idle cycle ? */
@@ -750,7 +785,7 @@ public:
         //     cout << "F. TIFJAnalysis::GetHistogram()  for " << name
         //     << " - such a spectrum is not found on the list "
         //     << endl;
-        return 0;
+        return nullptr;
     }
 
     //    ClassDef(TIFJAnalysis,1)
@@ -759,6 +794,7 @@ public:
 
 ///////////////////////////////////////////////////////////
 extern TIFJAnalysis *  RisingAnalysis_ptr ;
+extern unsigned int starting_event; // global to be set in main and accessed from constructor of TGo4Analysis.cxx
 
 #endif //TEBANALYSIS_H
 

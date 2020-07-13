@@ -28,8 +28,10 @@ using namespace std;
 #include "Texotic_strip_detector.h"
 
 #include "Thector.h"
+#include "Tparis.h"
 #include "Tkratta.h"
 #include "Thec_kratta_tree.h"
+#include "Tn_silicon_xy.h"
 
 #include "TprismaManager.h"
 
@@ -60,7 +62,7 @@ Tfrs::Tfrs(TIFJAnalysis *ptr, std::string name)               // constructor
     //---------------------------------------------
 
 #ifdef     KRATTA_PRESENT
-    module.push_back(new Tkratta("kratta"));
+    module.push_back(kratta_ptr = new Tkratta("kratta"));
 
 
 
@@ -68,11 +70,19 @@ Tfrs::Tfrs(TIFJAnalysis *ptr, std::string name)               // constructor
     module.push_back(new Thec_kratta_tree("hec_kratta_tree",
                                           &TIFJEvent::hector_tdc,
                                           &TIFJEvent::hector_adc,
-                                          &TIFJEvent::kratta)
-                    )  ;
+                                          &TIFJEvent::phoswich_tdc,
+                                          &TIFJEvent::phoswich_adc,
+                                          &TIFJEvent::kratta,
+                                          &TIFJEvent::plastic)
+                    );
 #endif // #if CERN_ROOT_INSTALLED == true
 
 #endif
+
+    // module.push_back((new Thector("hector") ));
+    module.push_back((new Tparis("paris")));
+
+    module.push_back(new Tn_silicon_xy<32> ("dedal"));
 
 
 #if CURRENT_EXPERIMENT_TYPE==PRISMA_EXPERIMENT
@@ -1341,6 +1351,9 @@ Tfrs::Tfrs(TIFJAnalysis *ptr, std::string name)               // constructor
     // was used for my testing purposes ----------------
     module.push_back(   new Tframe_simple ("test_frame", &TIFJEvent::mw21_x_left)  );
     */
+
+ #if 0   // Nie używane w CCB
+
     module.push_back(new T32_signal_module<32> ("module_vmeOne[2]", (&TIFJEvent::module_vmeOne_2),
                      false,  // bool flag_produce_fan_spectrum_arg , - false, // generally we do not want. Let the user make them as user defined
                      true, // <---- please make the spectra ( bool flag_produce_signal_spectra_arg,  - generally we do not want. Let the user make them as user defined)
@@ -1357,6 +1370,8 @@ Tfrs::Tfrs(TIFJAnalysis *ptr, std::string name)               // constructor
                      false,  // bool flag_produce_fan_spectrum_arg , - false, // generally we do not want. Let the user make them as user defined
                      true, // <---- please make the spectra ( bool flag_produce_signal_spectra_arg,  - generally we do not want. Let the user make them as user defined)
                      false));   //      bool flag_we_want_calibrate_signals_arg
+
+#endif
 
 #endif  // GSI_STUFF ##########################################################################################################
 
@@ -1414,6 +1429,8 @@ Tfrs::Tfrs(TIFJAnalysis *ptr, std::string name)               // constructor
 
 
 
+#if 0   // Nie używane w CCB
+
 //   module.push_back(new T32_signal_module<32> ("module_vmeOne[0]", (&TIFJEvent::module_vmeOne_0), true, true,      // <---- please make the spectra
 //                      false));
 //   module.push_back(new T32_signal_module<32> ("module_vmeOne[1]", (&TIFJEvent::module_vmeOne_1), true, true,      // <---- please make the spectra
@@ -1449,7 +1466,7 @@ Tfrs::Tfrs(TIFJAnalysis *ptr, std::string name)               // constructor
     module.push_back(new T32_signal_module<32> ("module_vmeUser[17]", (&TIFJEvent::module_vmeUser_17), false, false, false));
     module.push_back(new T32_signal_module<32> ("module_vmeUser[18]", (&TIFJEvent::module_vmeUser_18), false, false, false));
     module.push_back(new T32_signal_module<32> ("module_vmeUser[19]", (&TIFJEvent::module_vmeUser_19), false, false, false));
-
+#endif // 0
 
     create_your_spectra() ;
 }

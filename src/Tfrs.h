@@ -29,9 +29,10 @@
 
 //****************************************************************
 
-class Tone_signal_module ;
+//class Tone_signal_module ;
 
 class TIFJAnalysis;
+class Tkratta;
 ///////////////////////////////////////////////////////////////////////////////
 class Tfrs : public Tincrementer_donnor
 {
@@ -90,6 +91,7 @@ public:
     /** No descriptions */
     void put_data_to_ntuple_tree();
     /** To have the proper ranges of the spectra with zet or aoq  */
+    Tkratta* get_kratta_ptr() { return kratta_ptr;}
     //------------------------------
 protected:
 
@@ -101,7 +103,7 @@ protected: // Protected attributes
     /** doppler correcting devices will ask for some data */
     Ttarget * target_ptr;
     std::string official_name; // will be used as prefix for calibration file
-
+    Tkratta * kratta_ptr;
 
 };
 #endif // __CINT__

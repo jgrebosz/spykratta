@@ -9,6 +9,7 @@
 
 #include "Tkratta.h"
 #include "Tkratta_crystal.h"
+#include "Tkratta_crystal_plastic.h"
 #ifdef KRATTA_PRESENT
 
 #include "Tfrs.h"
@@ -17,98 +18,108 @@
 #include "TIFJAnalysis.h"
 
 #include "Tsi_detector.h"
+//#include "Tpaths.h"
+#include <iomanip>
 
-
+#include <fstream>
 //*************************************************************************
 Tkratta::Tkratta(string name): Tfrs_element(name)
 {
-    //  cout << "construcor of " << name_of_this_element << endl;
-
+    // cout << "constructor of " << name_of_this_element << endl;
     // To know how many kratta modules we have - we must read the lookup table
+//    string geo_name = "calibration/geo_map.geo";
+//    ifstream plik(geo_name);
+//    if(!plik)
+//    {
+//        cout << "!!! Fatal error: I can't open file " << geo_name
+//             << "\nMost probably you do not have such a file in the ./calibration subdirectory of "
+//             << endl;
+//        system ("pwd");
+//        system ("ls *");
+//        system ("ls ./calibration/*");
+//        exit(1);
+//    }
+    // -----------------
+    try{
 
-    string geo_name = "calibration/geo_map.geo";
-    ifstream plik(geo_name);
-    if(!plik)
-    {
-        cout << "!!! Fatal error: I can't open file " << geo_name
-             << "\nMost probably you do not have such a file in the ./calibration subdirectory of "
-             << endl;
-        system ("pwd");
-        system ("ls *");
-        system ("ls ./calibration/*");
-        exit(1);
-    }
-
-    map<int, string> mapka;
-    
-    // first line is a comment
-    string linijka;
-    for(int nr = 0 ; getline(plik, linijka) ; ++nr)
-    {
-        if(linijka[0] == '#' ) {
-            --nr;
-            continue;
-        }
-
-        //cout << "Przeczytane " << linijka << endl;
-        istringstream s(linijka.c_str());
-        int fadc, chan;
-        int modu;
-       // int sign = 0;
-        //bool flag = true;
-        string label;
-
-        s >> label>>  fadc >> chan ;
-
-        //      >>  sign >> modu;
-        //sign = nr % 3 ;
-        modu = nr / 3;
-
-        if(!s)
+        for(int m = 0, p_nr = 0; m < KRATTA_NR_OF_CRYSTALS ; ++m)
         {
-            //cerr << "  Tlookup_table_kratta::read_from_disk --> error while reading file " << name << endl;
-            break;
-        }
+            int p = 0 ; // just one for creating
+            ostringstream n;
+            n.fill('0');
+            n << setw(2) << m ;
+            string kratta_module_string = n.str();
+            string keyword = "kratta_" + kratta_module_string + "_pd" + to_string(p);
+           // FH::spot_in_file(plik, keyword);
+            //string label;
+           // int fadc, chan;
+           // plik >> zjedz >> fadc >> zjedz >> chan  ;
+            crystal.push_back(  new Tkratta_crystal(this,
+                                                    "kratta_"+kratta_module_string,
+                                                    m)) ;
 
-        // powolanie do istnienia
-        //cout << "loading to mapka do modul nr " << modu << ", label " << label << endl;
-        mapka[modu] = label;
+
+            for(int k = 0 ; k < 4 ; ++k)
+            {
+                //                int p = 0;
+                //                ostringstream n;
+                //                n.fill('0');
+                //                n << setw(2) << k ;
+                //                string m_string = n.str();
+                string keyword = "plastic_module_" + kratta_module_string +
+                        char('a' + k) ;
+
+                plastic.push_back(  new Tkratta_crystal_plastic(this,
+                                                                keyword,
+                                                                p_nr++)) ;
+            } // small for (0-3)
+        } // big for
+
     }
-
-
-    // -----------------------------------------------------------
-    for(int i = 0 ; i < KRATTA_NR_OF_CRYSTALS ; ++i)
+    catch(Tfile_helper_exception & e)
     {
-        // if i is legal
-        string lab = mapka[i];
-        if(! lab.empty())
-        {
-            crystal.push_back(  new Tkratta_crystal(this, "kratta"+lab.substr(0,2), i)) ;
-        }
+        cout << "While reading lookuptable file:"
+             // << geo_name
+             << "\n"<< e.message << endl;
+        exit(2);
     }
-
-    
-    
-    
+    //---------------------
     named_pointer[name_of_this_element+"_multiplicity"] =
             Tnamed_pointer(&multiplicity_of_hits, 0, this) ;
+    named_pointer[name_of_this_element+"_multiplicity_of_good_elements"] =
+            Tnamed_pointer(&multiplicity_of_good_hits, 0, this) ;
+
+    named_pointer[name_of_this_element+"_general_pd1_time_cal__when_only_one_good"] =
+            Tnamed_pointer(&general_pd1_time_cal__when_only_one_good, &flag_only_one_good, this) ;
+
+    // plastic
+    named_pointer[name_of_this_element+"_multiplicity_in_plastic"] =
+            Tnamed_pointer(&multiplicity_of_hits_in_plastic, 0, this) ;
+    named_pointer[name_of_this_element+"_multiplicity_of_good_elements_in_plastic"] =
+            Tnamed_pointer(&multiplicity_of_good_hits_in_plastic, 0, this) ;
+
+    named_pointer[name_of_this_element+"_general_plastic_time_cal__when_only_one_good"] =
+            Tnamed_pointer(&general_plastic_time_cal__when_only_one_good, &flag_only_one_good_in_plastic, this) ;
+
+
+
+
 
     create_my_spectra();
-
+//    cout << "End of Tkratta constructor" << endl;
 }
 //**************************************************************************
 Tkratta::~Tkratta()
 {
     save_spectra();
 }
-//*************************************************************************
 //*****************************************************************
 /** No descriptions */
 void Tkratta::create_my_spectra()
 {
-
     // Matrices ==============================================
-    // map of the positions
+    // map of the positions // does not have a sense, as this can change
+    // from expereiment, to experiment. Better to do it using Phi, Theta
     string folder = "kratta_folder/"  ;
     string name =   name_of_this_element + "_position_xy" ;
 
@@ -125,26 +136,131 @@ void Tkratta::create_my_spectra()
     //------------------------------------
     name = name_of_this_element + "_multiplicity"  ;
     spec_multiplicity = new spectrum_1D( name,
-                                         name,
-                                         KRATTA_NR_OF_CRYSTALS, 0, KRATTA_NR_OF_CRYSTALS,
-                                         folder );
+                                         KRATTA_NR_OF_CRYSTALS+4, 0, KRATTA_NR_OF_CRYSTALS+4,
+                                         folder, "",
+                                         name_of_this_element+"_multiplicity");
     frs_spectra_ptr->push_back(spec_multiplicity) ;
+
+    name = name_of_this_element + "_multiplicity_of_good_elements"  ;
+    spec_multiplicity_of_good = new spectrum_1D( name,
+                                                 KRATTA_NR_OF_CRYSTALS+4, 0, KRATTA_NR_OF_CRYSTALS+4,
+                                                 folder, "",
+                                                 name_of_this_element+"_multiplicity_of_good_elements"
+                                                 );
+    frs_spectra_ptr->push_back(spec_multiplicity_of_good) ;
+
+
+    name = name_of_this_element + "_multiplicity_in_plastic"  ;
+    spec_plastic_multiplicity = new spectrum_1D( name,
+                                                 KRATTA_NR_OF_CRYSTALS+4, 0, KRATTA_NR_OF_CRYSTALS+4,
+                                                 folder , "",
+                                                 name_of_this_element+"_multiplicity_in_plastic");
+    frs_spectra_ptr->push_back(spec_plastic_multiplicity) ;
+
+    name = name_of_this_element + "_multiplicity_of_good_elements_in_plastic"  ;
+    spec_plastic_multiplicity_of_good = new spectrum_1D( name,
+                                                         KRATTA_NR_OF_CRYSTALS+4, 0, KRATTA_NR_OF_CRYSTALS+4,
+                                                         folder , "",
+                                                         name_of_this_element + "_multiplicity_of_good_elements_in_plastic");
+    frs_spectra_ptr->push_back(spec_plastic_multiplicity_of_good) ;
 
 
     name = name_of_this_element + "_fan"  ;
     spec_fan = new spectrum_1D( name,
-                                name,
                                 KRATTA_NR_OF_CRYSTALS, 0, KRATTA_NR_OF_CRYSTALS,
-                                folder );
+                                folder,
+                                "if kratta fired (namely: any pd0,1,2 time - was present. (More details see in individual kratta fan spectra) ",
+                                "ask Jurek for a pseudo fan - if you really need this" );
     frs_spectra_ptr->push_back(spec_fan) ;
+
+    name = name_of_this_element + "_fan_of_good"  ;
+    spec_fan_of_good = new spectrum_1D( name,
+                                        KRATTA_NR_OF_CRYSTALS, 0, KRATTA_NR_OF_CRYSTALS,
+                                        folder, "elements which passing a condition 'GOOD'" ,
+                                        "ask Jurek for a pseudo fan - if you really need this" );
+    frs_spectra_ptr->push_back(spec_fan_of_good) ;
+
+    // PLASTIC
+    name = name_of_this_element + "_plastic_fan"  ;
+    spec_plastic_fan = new spectrum_1D( name,
+                                        KRATTA_NR_OF_PLASTICS*10/4, 0, KRATTA_NR_OF_PLASTICS*10/4,
+                                        folder, "",
+                                        "ask Jurek for a pseudo fan - if you really need this");
+    frs_spectra_ptr->push_back(spec_plastic_fan) ;
+
+    name = name_of_this_element + "_plastic_fan_of_good"  ;
+    spec_plastic_fan_of_good = new spectrum_1D( name,
+                                                KRATTA_NR_OF_PLASTICS*10/4, 0, KRATTA_NR_OF_PLASTICS*10/4,
+                                                folder, "elements which passing a condition 'GOOD'",
+                                                "ask Jurek for a pseudo fan - if you really need this");
+    frs_spectra_ptr->push_back(spec_plastic_fan_of_good) ;
+
+    //-------------
+
+    name = name_of_this_element + "_general_pd1_time_cal__when_only_one_good"  ;
+    spec_general_pd1_time_cal__when_only_one_good = new spectrum_1D( name,
+                                                                     4096, 0, 4096,
+                                                                     folder,
+                                                                     "when multiplicity of `good` == 1" ,
+                                                                     name_of_this_element+"_general_pd1_time_cal__when_only_one_good"
+                                                                     );
+    frs_spectra_ptr->push_back(spec_general_pd1_time_cal__when_only_one_good) ;
+
+
+    name = name_of_this_element + "_general_plastic_time_cal__when_only_one_good"  ;
+    spec_general_plastic_time_cal__when_only_one_good = new spectrum_1D( name,
+                                                                         4096, 0, 4096,
+                                                                         folder, "when multiplicity of `good` plastic == 1",
+                                                                         name_of_this_element+
+                                                                         "_general_plastic_time_cal__when_only_one_good");
+    frs_spectra_ptr->push_back(spec_general_plastic_time_cal__when_only_one_good) ;
+
+    // scalers
+    name = "plastic_scalers"  ;
+    spec_plastic_scalers = new spectrum_1D( name,
+                                            KRATTA_NR_OF_PLASTICS, 0, KRATTA_NR_OF_PLASTICS,
+                                            folder, "peaks are not growing, they are periodically replaced with new values",
+                                            "No_such_incrementer_defined");
+    frs_spectra_ptr->push_back(spec_plastic_scalers) ;
+
+
+
+
+
+    //    // scalers
+    //    name = "plastic_scalers"  ;
+    //    spec_plastic_scalers = new spectrum_1D( name,
+    //                                            KRATTA_NR_OF_PLASTICS, 0, KRATTA_NR_OF_PLASTICS,
+    //                                            folder, "", "" );
+    //    frs_spectra_ptr->push_back(spec_plastic_scalers) ;
+
+
+
+
+
+    name = "fan_ratios_plastic_over_kratta"  ;
+    spec_fan_ratios_plastic_over_kratta = new spectrum_1D( name,
+                                                           KRATTA_NR_OF_PLASTICS, 0, KRATTA_NR_OF_PLASTICS,
+                                                           folder, "No_such_incrementer_defined", "No_such_incrementer_defined" );
+    frs_spectra_ptr->push_back(spec_fan_ratios_plastic_over_kratta) ;
+
+
+    if(!matr_kratta_vs_plastic){
+        name = "kratta_vs_plastic_coincidences"  ;
+        matr_kratta_vs_plastic = new spectrum_2D( name,
+                                                  KRATTA_NR_OF_PLASTICS+1 + 5, -1, KRATTA_NR_OF_PLASTICS + 5,
+                                                  KRATTA_NR_OF_CRYSTALS+1 + 5, -1, KRATTA_NR_OF_CRYSTALS + 5,
+                                                  folder, "nie ma inkrementorow dla tego widma",
+                                                  "");
+        frs_spectra_ptr->push_back(matr_kratta_vs_plastic) ;
+    }
+
+
 }
 //*************************************************************************
 void Tkratta::make_preloop_action(ifstream &)
 {
-    // we do not use the stream here, because Cate has its own calibration file.
-
     cout << "Tkratta::make_preloop_action "  << endl;
-
 
     //     cout  << "Cala tablica kratta " << hex << &(event_unpacked->kratta) << dec << endl;
     for(unsigned int i = 0 ; i < crystal.size() ; i++)
@@ -152,54 +268,23 @@ void Tkratta::make_preloop_action(ifstream &)
         crystal[i]->set_event_data_pointers((event_unpacked->kratta[i]));
 
         //         cout  << "Ta trojka tablica " << hex << event_unpacked->kratta[i] << dec << endl;
-        crystal[i]->set_event_data_pointers((event_unpacked->kratta[i]));
+        //        crystal[i]->set_event_data_pointers((event_unpacked->kratta[i]));
     }
 
-
-#if 0
-
-    // Reading the distance of the Cate detector
-    string geometry_file = "calibration/kratta_geometry.txt" ;
-
-    try {
-
-        ifstream plik_geometry(geometry_file.c_str() );
-        if(! plik_geometry)
-        {
-            string mess = "I can't open  file: " + geometry_file  ;
-            throw mess ;
-        }
-        string slowo = name_of_this_element + "_distance";
-        distance = Tfile_helper::find_in_file(plik_geometry, slowo);
-    }
-    catch(Tfile_helper_exception &k)
+    for(unsigned int i = 0 ; i < plastic.size() ; i++)
     {
-        cerr << "Error while reading geometry file "
-             << geometry_file
-             << ":\n"
-             << k.message << endl  ;
-        exit(1);
+
+        plastic[i]->set_event_data_pointers((&event_unpacked->plastic[i]));
+        //plastic[i]->set_event_data_pointers((event_unpacked->kratta[i]));
     }
 
-
-    //  kratta_segment k ;
-    //  kratta_segment *k_ptr ;
-
-    //------------------------------
-
-
-    //cout << "After loop " << endl;
-
-
-
-    //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+    //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     // very important:
     // calibrations and gates are read everytime we start the analysis
 
     read_calibration_and_gates_from_disk();
-#endif
-    cout << "End of Tkratta preloop " << endl;
+
+//    cout << "End of Tkratta preloop " << endl;
 
 }
 //**********************************************************************
@@ -214,6 +299,43 @@ void Tkratta::read_calibration_and_gates_from_disk()
     // here we can open the calibration file
     //-------------------------------------------
 
+    ofstream plikG("my_binnings/kratta_geometry.mat.pinuptxt", ios::trunc);
+    plikG
+            << "-40.0  13.0  KRATTA detectors seen from Farady Cup\n"
+               // "0.0  -47.0  \n"
+               // << "0.0  0.0  O\n"
+            << endl;
+    plikG.close();
+
+    plikG.open("my_binnings/plastic_geometry.mat.pinuptxt", ios::trunc);
+    plikG
+            << "-40.0  13.0  Plastic detectors seen from Farady Cup\n"
+               // "0.0  -47.0  (Plastic detectors)\n"
+               // << "0.0  0.0  O\n"
+            << endl;
+    plikG.close();
+
+    plikG.open("my_binnings/plastic_geometry_from_scalers.mat.pinuptxt", ios::trunc);
+    plikG   << "0.0  13.0  seen from Farady Cup\n"
+            << "0.0  -47.0  (data for this plot is delivered by scalers)\n"
+            << endl;
+
+    plikG.close();
+
+    plikG.open("my_binnings/kratta_vs_plastic_coincidences.mat.pinuptxt", ios::trunc);
+    if(!plikG)
+    {
+        cout << "error while opening pinup coincindences" << endl;
+        exit(8);
+    }
+
+    plikG   << "5  33  kratta - when crystal fired (any pdf0,1,2 time present)\n"
+            << "5  31  plastic - when time present\n"
+            << endl;
+
+    plikG.close();
+
+    //-------------------------------------------------------------------------------
     string cal_filename = "calibration/kratta_calibration.txt";
     try {
         ifstream plik(cal_filename.c_str() ) ; // ascii file
@@ -227,12 +349,27 @@ void Tkratta::read_calibration_and_gates_from_disk()
         // real reading the calibration -----------------
         for(unsigned int i = 0 ; i < crystal.size() ; i++)
         {
-            cout << "reading calibration loop for kratta segment" << i << endl ;
+            //cout << "reading calibration loop for kratta segment" << i << endl ;
             crystal[i]->make_preloop_action(plik) ;   // reference
         }
 
-    }  // end of try
 
+        // real reading the calibration -----------------
+        for(unsigned int i = 0 ; i < plastic.size() ; i++)
+        {
+            //cout << "reading calibration loop for kratta segment" << i << endl ;
+            plastic[i]->make_preloop_action(plik) ;   // reference
+        }
+
+    }  // end of try
+    catch(Tfile_helper_exception & k)
+    {
+        cerr << "Error while reading calibration file "
+             << cal_filename
+             << ":\n"
+             << k.message << endl  ;
+        exit(-1);
+    }
     catch(string sss)
     {
         cerr << "Error while reading calibration file "
@@ -242,10 +379,7 @@ void Tkratta::read_calibration_and_gates_from_disk()
         exit(-1) ; // is it healthy ?
     }
 
-    cout << "kratta calibration successfully read"
-         << endl;
-
-
+//    cout << "kratta calibration successfully read"          << endl;
 
     //------------------------------------
     // we need to read the 1D gates for KRATTA itself
@@ -257,116 +391,269 @@ void Tkratta::read_calibration_and_gates_from_disk()
     // reading gates
     // but this is in a different file....
 
-    cout << " reading the gates for " << name_of_this_element << "  " << endl ;
+    //    cout << " reading the GOOD gates for " << name_of_this_element << "  " << endl ;
 
+    // reading from the file
+    string pname =
+            //path.options +
+            "./options/good_kratta.txt" ;
+    ifstream plik(pname.c_str());
+    if(!plik)
+    {
+        cout << "Cant open file " << pname << endl;
+        return ;
+    }
 
-    //-----------------
+    try{
+        //----------
+        Tkratta_crystal::good_pd0_time_cal_requires_threshold =
+                (bool) Nfile_helper::find_in_file(plik, "good_pd0_time_cal_requires_threshold") ;
+        Tkratta_crystal::pd0_time_cal_lower_threshold =
+                Nfile_helper::find_in_file(plik, "pd0_time_cal_lower_threshold") ;
+        Tkratta_crystal::pd0_time_cal_upper_threshold =
+                Nfile_helper::find_in_file(plik, "pd0_time_cal_upper_threshold") ;
 
+        Tkratta_crystal::good_pd1_time_cal_requires_threshold =
+                (bool) Nfile_helper::find_in_file(plik, "good_pd1_time_cal_requires_threshold") ;
+        Tkratta_crystal::pd1_time_cal_lower_threshold =
+                Nfile_helper::find_in_file(plik, "pd1_time_cal_lower_threshold") ;
+        Tkratta_crystal::pd1_time_cal_upper_threshold =
+                Nfile_helper::find_in_file(plik, "pd1_time_cal_upper_threshold") ;
 
-    //  // Gate on the total CsI time --------------------
-    //
-    //  string nam_gate = string("gates/")
-    //    + name_of_this_element
-    //    + "_total_CsI_time_cal"
-    //    + "_gate_GATE.gate" ;
-    //
-    //  ifstream plik_gates(nam_gate.c_str() );
-    //  if(! plik_gates)
-    //    {
-    //   string mess = "I can't open  file: " + nam_gate  ;
-    //   // throw mess ;
-    //   cout << mess << "\nSo I assume that the gate is wide open !!!!!!!!!!! \a\a\a\n" << endl;
-    //   ofstream pliknew(nam_gate.c_str() );
-    //   pliknew <<  total_CsI_time_gate_low
-    //        << "   "
-    //        << total_CsI_time_gate_high
-    //        << "\t\t // left and right value for the gate" << endl;
-    //
-    //    }else{
-    //
-    //
-    //        plik_gates >> zjedz >> total_CsI_time_gate_low     // lower limit
-    //               >> zjedz >> total_CsI_time_gate_high ;   // upper limit
-    //
-    //   if(! plik_gates)
-    //     {
-    //       string mess = "Error while reading 2 numbers from the gate file: " + nam_gate  ;
-    //       exit(-1) ;
-    //     }
-    //   plik_gates.close() ;
-    //    }
-    //
-    //
-    //// gate on the total Si time ---------------------------
-    //  nam_gate = string("gates/")
-    //    + name_of_this_element
-    //    + "_total_Si_time_cal"
-    //    + "_gate_GATE.gate" ;
-    //
-    //  ifstream plik_gates2(nam_gate.c_str() );
-    //  if(! plik_gates2)
-    //    {
-    //   string mess = "I can't open  file: " + nam_gate  ;
-    //   // throw mess ;
-    //   cout << mess << "\nSo I assume that the gate is wide open !!!!!!!!!!! \a\a\a\n" << endl;
-    //   ofstream pliknew(nam_gate.c_str() );
-    //   pliknew <<  total_Si_time_gate_low
-    //        << "   "
-    //        << total_Si_time_gate_high
-    //        << "\t\t // left and right value for the gate" << endl;
-    //
-    //    }else{
-    //
-    //
-    //   plik_gates2 >> zjedz >> total_Si_time_gate_low     // lower limit
-    //         >> zjedz >> total_Si_time_gate_high ;   // upper limit
-    //
-    //   if(! plik_gates2)
-    //     {
-    //    string mess = "Error while reading 2 numbers from the gate file: " + nam_gate  ;
-    //    exit(-1) ;
-    //     }
-    //   plik_gates2.close() ;
-    //    }
+        Tkratta_crystal::good_pd2_time_cal_requires_threshold =
+                (bool) Nfile_helper::find_in_file(plik, "good_pd2_time_cal_requires_threshold") ;
+        Tkratta_crystal::pd2_time_cal_lower_threshold =
+                Nfile_helper::find_in_file(plik, "pd2_time_cal_lower_threshold") ;
+        Tkratta_crystal::pd2_time_cal_upper_threshold =
+                Nfile_helper::find_in_file(plik, "pd2_time_cal_upper_threshold") ;
 
+        //-------
+    }
+    catch(Tfile_helper_exception k)
+    {
+        cout << "Error while reading " << pname << "\n" << k.message << endl;
+    }
 }
-//********************************************************
-//********************************************************
-//********************************************************
+//****************************************************************************************************************
 void Tkratta::analyse_current_event()
 {
-
-    /*  char wzmocnienie;
-//   typedef int cena;
-    using cena = int;
-
-  const cena  cen_1 = 40.8;      wolno dodać const
-  cena  cen_2 { 30.6 };     // nadaje sie rowniez dla double (bo rozszerzenie a nie zawężenie
- */
-
-
-
     if(calculations_already_done) return ;
 
     multiplicity_of_hits = 0;
+    multiplicity_of_good_hits = 0;
 
-    //cout << "Cate analyse current event" << endl;
+    multiplicity_of_hits_in_plastic = 0;
+    multiplicity_of_good_hits_in_plastic = 0;
+
+    flag_only_one_good = false;
+    flag_only_one_good_in_plastic = false;
+
+    // cout << "Kratta is analysing the current event" << endl;
     for(unsigned int i = 0 ; i < crystal.size() ; i++)
     {
         crystal[i]->analyse_current_event();
+
         if(crystal[i]->fired() )
         {
-            //      cout << "Kratta segment " << i+1 << " fired " << endl;
+            //  cout << "Kratta segment " << i+1 << " fired " << endl;
             ++multiplicity_of_hits;
 
             spec_fan->manually_increment( (int)i);  // they like (1-9)
+            kratta_statistics[i]++;
+
             // int x_position = crystal[i]->give_x();
             // int y_position = crystal[i]->give_y();
             // matr_position_xy->manually_increment(x_position, y_position);
         }  // if this crystal fired
+
+        if(crystal[i]->fired_good() )
+        {
+            //cout << "Kratta segment " << i+1 << " good " << endl;
+            ++multiplicity_of_good_hits;
+            spec_fan_of_good->manually_increment( (int)i);
+
+            general_pd1_time_cal__when_only_one_good = crystal[i]->give_pd1_time_cal();
+        }  // if this crystal fired in a GOOD region
+
+    }
+    spec_multiplicity->manually_increment(multiplicity_of_hits);
+    spec_multiplicity_of_good->manually_increment(multiplicity_of_good_hits);
+
+    if(multiplicity_of_good_hits == 1){
+        flag_only_one_good = true;
+        spec_general_pd1_time_cal__when_only_one_good->manually_increment
+                (general_pd1_time_cal__when_only_one_good);
+    }
+
+
+    // PLASTIC ==================================
+    for(unsigned int i = 0 ; i < plastic.size() ; i++)
+    {
+        plastic[i]->analyse_current_event();
+
+        int which_channel = ((i / 4) * 10) + i%4;
+
+        if(plastic[i]->fired() )
+        {
+            //            cout << "Plastic segment " << i+1 << " fired " << endl;
+            ++multiplicity_of_hits_in_plastic;
+
+            spec_plastic_fan->manually_increment( which_channel);
+
+            plastic_statistics[i]++;
+
+            // they like (1-9)
+            // int x_position = crystal[i]->give_x();
+            // int y_position = crystal[i]->give_y();
+            // matr_position_xy->manually_increment(x_position, y_position);
+        }  // if this crystal fired
+
+        if(plastic[i]->fired_good() )
+        {
+            //cout << "Kratta segment " << i+1 << " good " << endl;
+            ++multiplicity_of_good_hits_in_plastic;
+            spec_plastic_fan_of_good->manually_increment( which_channel);
+
+            general_plastic_time_cal__when_only_one_good = plastic[i]->give_time_cal(); // NOTE:
+        }  // if this crystal fired in a GOOD region
+
+
     } // for
 
-    spec_multiplicity->manually_increment(multiplicity_of_hits);
+    // plastic -------------
+    spec_plastic_multiplicity->manually_increment(multiplicity_of_hits_in_plastic);
+    spec_plastic_multiplicity_of_good->manually_increment(multiplicity_of_good_hits_in_plastic);
+
+    if(multiplicity_of_good_hits_in_plastic == 1){
+        flag_only_one_good_in_plastic = true;
+        spec_general_plastic_time_cal__when_only_one_good->manually_increment
+                (general_plastic_time_cal__when_only_one_good);
+    }
+
+    if(event_unpacked->plastic_scalers[0] != 999999)
+    {
+        //spec_plastic_scalers->zeroing();
+        for(int n = 0 ; n < KRATTA_NR_OF_PLASTICS ; ++n)
+        {
+            if( event_unpacked->plastic_scalers[n] > 0){
+                spec_plastic_scalers->manually_inc_by(n, event_unpacked->plastic_scalers[n]);
+                //                cout << "scaler chan " << n << " incremented by "
+                //                     << event_unpacked->plastic_scalers[n] << endl;
+
+                // need recable-ing
+                int rec = 0;
+                if(n >= 0 && n < 32) rec = n+64;
+                if(n >= 32 && n < 64) rec = n;
+                if(n >= 64 && n < 96) rec = n-64;
+                plastic[rec]->incr_geometry_from_scalers_matrix(event_unpacked->plastic_scalers[n]);
+            }
+            event_unpacked->plastic_scalers[0] = 999999;
+        }
+    }
+
+    // loop over all plastics
+    // take current valuue of fan (or scaler)
+    // take corresponding fan of kratta det
+    // make ratio
+    // incement spectrum
+
+
+    // Coincidences of plastic vs kratta -----------------------------------------------
+    // matrices kratta_0N_PD0_TIME vs  plastic_0Na,b,c,d
+    for(unsigned int k = 0 ; k < crystal.size() ; k++)
+    {
+        // get pd0_time
+
+        if(crystal[k]->fired() )
+        {
+            double kratta_time = crystal[k]->give_pd0_time_cal();
+#if 0
+            bool was_plastic = false;
+            for(unsigned int p = 0 ; p < 4 ; ++p)
+            {
+                if(plastic[k*4 + p]->fired())
+                {
+                    was_plastic = true;
+                    double plastic_time = plastic[k*4 + p]->give_time_cal();
+                    if(kratta_time > 1 && plastic_time >1 )
+                        matr_kratta_vs_plastic->manually_increment((int)(k*4 + p), (int)k);
+                }
+            }
+            if(was_plastic == false && (kratta_time > 1))
+            {
+                matr_kratta_vs_plastic->manually_increment(-1, k);
+            }
+#else
+            bool was_plastic = false;
+            for(unsigned int p = 0 ; p < plastic.size() ; ++p)
+            {
+                if(plastic[p]->fired())   // and kratta fired
+                {
+                    //was_plastic = true;
+                    double plastic_time = plastic[p]->give_time_cal();
+                    if(kratta_time > 1 && plastic_time >1 )
+                        matr_kratta_vs_plastic->manually_increment((int)(p), (int)k);
+                }
+                else if(was_plastic == false && (kratta_time > 1))
+                {
+                    matr_kratta_vs_plastic->manually_increment(-1, k);
+                }
+            }
+#endif
+        }
+        else // no crystal
+        {
+#if 0
+            for(unsigned int p = 0 ; p < 4 ; ++p)
+            {
+                if(plastic[k*4 + p]->fired())
+                {
+                    double plastic_time = plastic[k*4 + p]->give_time_cal();
+                    if(plastic_time >1 )
+                        matr_kratta_vs_plastic->manually_increment((int)(k*4 + p), -1);
+                }
+            }
+#else
+            for(unsigned int p = 0 ; p < plastic.size() ; ++p)
+            {
+                if(plastic[p]->fired())
+                {
+                    double plastic_time = plastic[p]->give_time_cal();
+                    if(plastic_time >1 )
+                        matr_kratta_vs_plastic->manually_increment((int)(p), -1);
+                }
+            }
+#endif
+        }
+    }
+    //--------------------------------------------------------------------------------
+    // Making statistics every 30 seconds
+    static time_t last_time = time(0);
+    if(time(0) - last_time > 10)
+    {
+        spec_fan_ratios_plastic_over_kratta->zeroing();
+        Tkratta_crystal_plastic::zero_ratios_matrix();
+
+        for(int i = 0 ; i < KRATTA_NR_OF_PLASTICS ; ++i)
+        {
+            if(kratta_statistics[i/4] == 0) continue;
+            ratio_statistics[i] = 100* plastic_statistics[i] / kratta_statistics[i/4];
+            // inkrement spectrum
+            spec_fan_ratios_plastic_over_kratta->manually_inc_by(i,
+                                                                 (int)ratio_statistics[i]);
+            plastic[i]->incr_ratios_matrix( (int) ratio_statistics[i]);
+
+            //            cout << "plastic nr " << i
+            //                 << ", ratio = " << ratio_statistics[i]
+            //                    << "%, plastic = " << plastic_statistics[i]
+            //                       << ", kratta = " << kratta_statistics[i/4]
+            //                    << endl;
+        }
+        last_time = time(0);
+        // memset(ratio_statistics, 0, sizeof(ratio_statistics));
+        memset(plastic_statistics, 0, sizeof(plastic_statistics));
+        memset(kratta_statistics, 0, sizeof(kratta_statistics));
+    }
 
     // finally
     calculations_already_done = true ;
@@ -375,11 +662,7 @@ void Tkratta::analyse_current_event()
 void  Tkratta::make_postloop_action()
 {
     // cout << "F.Tkratta::make_postloop_action() " << endl ;
-
-    // save all spectra made in Cate and in crystals
     save_spectra();
-
-
     // cout << "end of F.Tkratta::make_postloop_action() " << endl ;
 }
 //***********************************************************************
@@ -403,56 +686,12 @@ void Tkratta::simulate_event()
 #endif
 }
 //**********************************************************************
-///** gives the geometrical position of the hit */
-//double Tkratta::give_x()
-//{
-//  if( ! calculations_already_done) analyse_current_event();
-//  return x_position ; // it is simulation, here should be real position
-//}
-////**********************************************************************
-///** returns the y geomterical position of the hit on the Cate detector */
-//double Tkratta::give_y()
-//{
-//  if( ! calculations_already_done) analyse_current_event();
-//  return y_position ; // it is simulation, here should be real position
-//}
-//***************************************************************************
-/**  Checking if we were able to determine X Y correctly */
-//bool Tkratta::was_xy_ok()
-//{
-//  if( ! calculations_already_done) analyse_current_event();
-//
-//  return flag_exact_xy_ok ;
-//}
-//*****************************************************************************
 /** made in post loop, but also when the FRS ask for it (i.e. every 5 min) */
 void Tkratta::save_spectra()
 {
-    //     // saving Cate spectra
-    //     // .....
-    //
-    //     // saving crystal spectra
-    //     // .....
-    //
-    //     for(unsigned int i = 0 ; i < kratta_spectra_list.size() ; i++)
-    //     {
-    //         //cout << "Trying to save spectrum nr " <<  i << endl ;
-    //         kratta_spectra_list[i]->save_to_disk() ;
-    //     }
 
 }
 //***************************************************************
-/** if only Si crystal fired */
-//bool Tkratta::was_only_one_hit()
-//{
-//  return flag_only_one_hit ;
-//}
-//***************************************************************
-/** if we had data from one and only one segment. (even if the data is outside of some gates) */
-//bool Tkratta::segment_known()
-//{
-//  flag_one_hit ;
-//}
 //***************************************************************
 /** was zero, one, or more kratta segment hit by the residue how_many_hits */
 // int Tkratta::how_many_hits()
@@ -460,37 +699,5 @@ void Tkratta::save_spectra()
 //     return multiplicity_of_hits ;
 // }
 //***************************************************************
-/** No descriptions */
-//void Tkratta::incr_matr_dE_vs_E_gated_by_multiplicity(int nr)
-//{
-//  if(dE.size() == 1
-//  && E.size() == 1)
-//  {
-//    if(nr == 1)
-//    {
-//      matr_total_dE_E_gated_by_crystal_multiplicityA->manually_increment(E[0], dE[0]);
-//    }
-//    if(nr == 2)
-//    {
-//      matr_total_dE_E_gated_by_crystal_multiplicityB->manually_increment(E[0], dE[0]);
-//    }
-//    if(nr == 3)
-//    {
-//      matr_total_dE_E_gated_by_crystal_multiplicityC->manually_increment(E[0], dE[0]);
-//    }
-//  }
-//  else if( dE.size() > 1)
-//  {
-//    //cout << "Tkratta Many hits " << dE.size() << endl;
-//  }
-//}
-/** if it was element 1, 3, 7, 9 (starting from 1) */
-//**********************************************************************************************
-/** gives the geometrical position of the hit */
-//**********************************************************************************************
-
-
-
-
 
 #endif   // #ifdef KRATTA_PRESENT

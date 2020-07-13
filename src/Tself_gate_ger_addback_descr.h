@@ -65,7 +65,7 @@ public:
   double BGO_in_cluster_gate[2];
 
   Tself_gate_ger_addback_descr();
-  virtual ~Tself_gate_ger_addback_descr() {} ;
+  virtual ~Tself_gate_ger_addback_descr() {}
   void read_definition_from(string pathed_name);
   void write_definitions(string path_only);
 };

@@ -48,19 +48,24 @@
 #define MBS_DATAFILE
 #define HECTOR_PRESENT
 #define KRATTA_PRESENT
+#define KRATTA_PLASTIC_PRESENT
 
-constexpr int KRATTA_NROW = 4;
-constexpr int KRATTA_NCOL = 4;
-constexpr int KRATTA_NR_OF_CRYSTALS  {KRATTA_NROW * KRATTA_NCOL};
-    
 
+//constexpr int KRATTA_NROW = 4;
+//constexpr int KRATTA_NCOL = 4;
+
+constexpr int KRATTA_NR_OF_CRYSTALS = 40;        //{KRATTA_NROW * KRATTA_NCOL};
+constexpr int KRATTA_NR_OF_PLASTICS = KRATTA_NR_OF_CRYSTALS * 4;
+
+constexpr int NR_OF_SILICONS = 32;
+
+constexpr int PLASTIC_HOW_MANY_TDC_ADC_CHANNELS  {64 };
+constexpr int NR_DIGITIZERS = 4; // (0-3) -> max nr of digitizers
+
+//#define CERN_ROOT_INSTALLED  false
 #define CERN_ROOT_INSTALLED  true
-// #define CERN_ROOT_INSTALLED  false
-
     
 #define USER_INCREMENTERS_ENABLED
-
-
 
 //#################################################################
 #elif CURRENT_EXPERIMENT_TYPE==EXOTIC_EXPERIMENT

@@ -23,7 +23,7 @@
 
 #include "Tincrementer_donnor.h"
 // class Tspectrum_1D_conditional;
-class Thector ;
+// class Thector ;
 
 ///////////////////////////////////////////////////////////////////////////////
 class Trising : public Tincrementer_donnor
@@ -33,7 +33,7 @@ class Trising : public Tincrementer_donnor
 
     Tfrs    *frs_pointer ;  // pointer to the frs object
 #ifdef HECTOR_PRESENT
-    Thector *hector_pointer ;  // pointer to the HECTOR object
+    //Thector *hector_pointer ;  // pointer to the HECTOR object
 #endif
 
     // all pointers to spectra for rising crystals and clusters
@@ -213,7 +213,7 @@ public:
     /** Before analyzing anything in Hector and Rising */
 //  bool first_check_cluster_multiplicity();
     /** No descriptions */
-    int give_synchro_data() ;;
+    int give_synchro_data();
     /** No descriptions */
     void read_good_crystal_specification();
     /** No descriptions */

@@ -231,7 +231,7 @@ void Tself_gate_ger_addback_descr::read_definition_from(string pathed_name)
                 {
                     cout << "During Reading-in the self gate named "
                          << name
-                         << "\n  Impossible to read polygon gate: " << energy_time_polygon_gate
+                         << "\n  [A] Impossible to read polygon gate: " << energy_time_polygon_gate
                          << "\nMost probably it does not exist (anymore?)"
                          << endl;
                     exit(1);

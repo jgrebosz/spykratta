@@ -38,7 +38,6 @@ void Tone_signal_pattern_module::create_my_spectra()
     //-----------
     string name = name_of_this_element + "_signal"  ;
     spec_first = new spectrum_1D(name,
-                                 name,
                                  8192, 0, 8192,
                                  folder);
     frs_spectra_ptr->push_back(spec_first) ;
@@ -73,7 +72,7 @@ void Tone_signal_pattern_module::analyse_current_event()
 }
 //**************************************************************
 // read the calibration factors, gates
-void  Tone_signal_pattern_module::make_preloop_action(ifstream & s)
+void  Tone_signal_pattern_module::make_preloop_action(ifstream & /*s*/)
 {
 
 }

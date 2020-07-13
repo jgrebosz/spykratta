@@ -30,7 +30,9 @@ public:
                  hector,
                  miniball,
                  cluster_addback,
-                 agata_psa           // Agata puls shape analysis
+                 agata_psa,           // Agata puls shape analysis
+                  galileo_ge,     // Galileo Germanium detectors
+                 kratta
                };
 
     Types my_type;
@@ -47,7 +49,10 @@ public:
     static std::map<Types, std::vector<std::string> >  selfgate_types_map;
 
     //------------------------------------------------------------
-    bool sg_is_not_available() { return my_type == not_available ; }
+    bool sg_is_not_available() {
+        // cout << "type of selfgates for this object is nr is " << my_type << endl;
+        return my_type == not_available ;
+    }
     std::string  give_type_name() const // Types t)
     {
         return selfgate_types_map[my_type][0] ;

@@ -5,7 +5,7 @@
 #include "Tcrystal_xia.h"
 #include "Tincrementer_donnor.h"
 #include <string>
-istream & zjedz(istream & plik);
+//istream & zjedz(istream & plik);
 
 /////////////////////////////////////////////////////////////////////////////////
 struct fired_good_crystal   // for multiaddback purposes

@@ -16,12 +16,15 @@
 ***************************************************************************/
 
 #include "Tlookup_table_kratta.h"
-//#include "Tfile_helper.h"
+#include "Tfile_helper.h"
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <sstream>
 
+
 #include <cstdlib>
+#include <experiment_def.h>
 
 //**************************************************************************
 Tlookup_table_kratta::Tlookup_table_kratta()
@@ -36,7 +39,8 @@ Tlookup_table_kratta::~Tlookup_table_kratta()
 /** Reading the settings, which experimentator stored on the disk */
 void Tlookup_table_kratta::read_from_disk(string name)
 {
-
+    cout << __func__ << endl;
+try{
     //string name = "./geo_map.geo" ;
     ifstream plik(name.c_str());
     if(!plik)
@@ -47,42 +51,89 @@ void Tlookup_table_kratta::read_from_disk(string name)
         exit(1);
     }
 
+
+#define LOOKUP_JUREK false
+
+#if LOOKUP_JUREK == true
     // first line is a comment
-    string linijka;
-    for(int nr = 0  ; getline(plik, linijka) ; ++nr)
-    {
-        if(linijka[0] == '#' ) {
-            --nr;
-            continue;
+
+    for(int m = 0 ; m < KRATTA_NR_OF_CRYSTALS ; ++m)
+        for(int p = 0 ; p < 3  ; ++p)
+        {
+            cout << __LINE__ << endl;
+            ostringstream n;
+            n.fill('0');
+            n << "kratta_" << setw(2) << m << "_pd" << p;
+
+            string keyword = n.str();
+
+            FH::spot_in_file(plik, keyword);
+            //string label;
+            int fadc, chan;
+            plik
+                    //>> label
+                    >> zjedz >> fadc >> zjedz >> chan  ;
+            if(!plik) break;
+            // kodowanie
+            int key = koding_key(fadc, chan) ;
+            mapka[key] = kwartet(m, p, false, "puste");
+            //cout << "Ladowanie kratta lookup table - fadc = " << fadc << " chan= " << chan << " daja klucz " << key << endl;           
         }
 
-        //cout << "Przeczytane " << linijka << endl;
-        istringstream s(linijka.c_str());
-        int fadc, chan, modu, sign;
-        bool flag = true;
-        string label;
 
-#if 1   // new spi 
-        s >> label>>  fadc >> chan  ;
-        sign = nr %3;
-        modu = nr / 3;
-#else	
-        s >> fadc >> chan >> modu >> sign >> flag >> label ;
+    for(int m = 0 ; m < KRATTA_NR_OF_PLASTICS ; ++m)
+        for(int p = 0 ; p < 2  ; ++p) // just two signals
+        {
+            ostringstream n;
+            n.fill('0');
+            n << "plastic_module_" << setw(2) << m << "_pd" << p;
+
+            string keyword = n.str();
+
+            try{
+            FH::spot_in_file(plik, keyword);
+
+            int fadc, chan;
+            plik
+                    //>> label
+                    >> zjedz >> fadc >> zjedz >> chan  ;
+            if(!plik) break;
+            // kodowanie
+            int key = koding_key(fadc, chan) ;
+            mapka[key] = kwartet(m, p, true, "puste"); // true means - plastic
+//            cout << "Ladowanie kratta lookup table - Plastic,  fadc = " << fadc
+//                 << " chan= " << chan << " daja klucz " << key << endl;
+            }
+            catch(Tno_keyword_exception & e)
+            {
+              //cout << e.message << endl;
+              FH::repair_the_stream(plik);
+            }
+        }
+
 #endif
 
-        if(!s)
-        {
-            cerr << "  Tlookup_table_kratta::read_from_disk --> error while reading file " << name << endl;
-            return;
-        }
-        //kwartet tr(modu, sign, flag, label);
-        // kodowanie
-        int key = koding_key(fadc, chan) ;
-        mapka[key] = kwartet(modu, sign, flag, label);
-        cout << "Ladowanie lookup table - fadc = " << fadc << " chan= " << chan << " daja klucz " << key << endl;
+
+
+
+    }catch(Tno_keyword_exception & e)
+    {
+     cout << e.message << " in lookup table file " << name << endl;
+     exit(1);
+    }
+    catch(Treading_value_exception &e)
+    {
+        cout << e.message << " in lookup table file " << name << endl;
+        exit(1);
     }
 
-    //  cout << "Lookup table successfully read " << endl;
+
+
+
+
+
+
+//  cout << "Lookup table successfully read " << endl;
 
 }
 //*************************************************************************

@@ -20,6 +20,8 @@ Tselfgate_type::Tselfgate_type(Types t):my_type(t)
         selfgate_types_map[miniball] = {"miniball", ".self_gate_mib_crystal", "MINIBALL germanium detectors"} ;
         selfgate_types_map[cluster_addback] = {"cluster_addback", ".self_gate_ger_addback_cluster", "Addback in cluster of crystals of germanium (Rising)"} ;
         selfgate_types_map[agata_psa] = {"agata_psa", ".self_gate_agata_psa", "AGATA germanium detectors of - for pulse shape analysis"} ;
+        selfgate_types_map[galileo_ge] = {"Germanium_galileo", ".self_gate_galileo_ge", "GALILEO germanium detectors"} ;
+        selfgate_types_map[kratta] = { "kratta", ".self_gate_kratta_crystal", "KRATTA detector " };
 
     }
 }

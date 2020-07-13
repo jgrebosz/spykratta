@@ -12,10 +12,10 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class TjurekAbstractEventProcessor
 {
-    string name;
+    string proc_name;
 public:
 //    TjurekAbstractEventProcessor();
-    TjurekAbstractEventProcessor(string name_) : name(name_) {} ;
+    TjurekAbstractEventProcessor(string name_) : proc_name(name_) {} ;
     ~TjurekAbstractEventProcessor();
 
     virtual void preLoop() = 0;

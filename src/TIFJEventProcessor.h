@@ -68,6 +68,19 @@ typedef uint32_t daq_word_t;
 typedef const uint32_t const_daq_word_t;
 
 
+#if 1
+// here we may see so called Visiting card
+struct Tvisitcard
+{
+    char type[8];           // type of VME board
+    char name[8];           // specific name of the board
+    uint32_t hwaddr;        // VME address of the board
+    uint32_t size;          // size of the data block, starting from type
+    uint32_t data;          // Should be always last!
+};
+
+#endif
+
 /////////////////////////////////////////////////////////////////////////////////
 class vme_775_header_word
 {
@@ -688,7 +701,12 @@ public:
     void read_ger_plastic_time_lookup_data();
 
 
-    void unpack_caen_v1724( int event, int subevent, uint32_t* p_se, int length );  // Kratta
+    void unpack_caen_v1724_kratta_digitizer( int event, int subevent, uint32_t* p_se, int length );  // Kratta
+
+    void setup_Piotr_Pawlowski_lookup_tables(string example_data_filename);
+    std::string find_proper_lookuptable_name(string ltb_name,
+                                             string current_path_for_lookup_table,
+                                             string data_file_name);
 
 protected:
     spectrum_1D *spec_ger_minus_frs_timestamp_diff;
@@ -884,7 +902,7 @@ protected:
 #endif
 
 
-Tlookup_table_kratta lookup_kratta;
+// Tlookup_table_kratta lookup_kratta;
 
 //#################################################################
 #if CURRENT_EXPERIMENT_TYPE==PRISMA_EXPERIMENT
@@ -951,6 +969,8 @@ Tlookup_table_kratta lookup_kratta;
 
     Tlookup_table_triple_universal  lookup_multiplicity_module;
 #endif
+
+
 
 
     // lookup data to read the Plastic time
@@ -1329,7 +1349,7 @@ Tlookup_table_kratta lookup_kratta;
     /** This is the function which reads new style of event - characteristic
     to the fast beam campaign. There is no timestamp matching, everything
     comes together as one event (with subevent parts) */
-    bool unpack_the_fast_beam_campaign_event();
+    bool unpack_the_CCB_event();
     //bool unpack_the_kratta_mbs_event();
     bool  unpack_kratta_hector_event(const_daq_word_t *data, int how_many_words);
 
@@ -1341,7 +1361,9 @@ Tlookup_table_kratta lookup_kratta;
     void unpack_36_2700( int event, int subevent, uint32_t* data, int length );
     void unpack_32_1130( int event, int subevent, uint32_t* data, int length ) ;
     void unpack_36_9494( int event, int subevent, uint32_t* data, int length );
-    void unpack_hector(uint32_t *data);
+    // second argument is telling if we unpack real hector data, or foswitch data
+    // which is comming with the same structure, (but later) in the event
+    void unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_block, bool real_hector, int length);
     uint32_t     swap_int32(uint32_t   dana);
 //*****************************************************************************
 
@@ -1424,6 +1446,17 @@ Tlookup_table_kratta lookup_kratta;
         const daq_word_t*  long_data,
         int how_many_words);
 #endif
+
+int HECTOR_ADC_GEO;
+int HECTOR_TDC_GEO;
+int PHOSWITCH_ADC_GEO = 20;  // data will be taken from lookup table (finally)
+int PHOSWITCH_TDC_GEO = 21;
+
+
+void unpack_V775(Tvisitcard *visit_ptr);
+void unpack_V879_878(Tvisitcard *visit_ptr);
+void unpack_V785(Tvisitcard *visit_ptr);
+void unpack_V830(Tvisitcard *visit_ptr);
 
 //  ClassDef(TIFJEventProcessor,1)
 };

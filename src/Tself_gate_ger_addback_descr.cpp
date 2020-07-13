@@ -72,7 +72,7 @@ Tself_gate_ger_addback_descr::Tself_gate_ger_addback_descr()
 void Tself_gate_ger_addback_descr::read_definition_from(string pathed_name)
 {
 
-    enable_energy_time_polygon_gate = "click_here";
+    enable_energy_time_polygon_gate = 0; //"click_here";
     string file_name = pathed_name ;
     // path.user_def_spectra + name_of_spectrum + ".self_gate_ger_crystal" ;
     ifstream plik(file_name.c_str());

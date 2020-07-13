@@ -44,9 +44,24 @@ TROOT go4application("The GO4", "This is the Go4");
 
 #define WHAT  cout << "File " << __FILE__ << ", Line= " << __LINE__ << endl ;
 
+#include "DataDecoder.h"
+
+//struct Tprobnik
+//{
+//    Tprobnik()
+//    {
+//        cout << "konstruktor probnika";
+//        DataDecoder::List();
+//    }
+
+//};
+
+//Tprobnik p;
+
 
 // global variable
-extern bool go4_gui_mode ;  // Take does not want to save *.spc files in Go4 mode
+// extern bool go4_gui_mode ;  // Take does not want to save *.spc files in Go4 mode
+
 
 unsigned int starting_event; // global to be set in main and accessed from constructor of TGo4Analysis.cxx
 
@@ -56,6 +71,10 @@ unsigned int starting_event; // global to be set in main and accessed from const
 int main(int argc, char **argv)
 {
     // keep users from running multiple spies in one directory
+
+//Tprobnik p2;
+    DataDecoder::List();
+
 
 #ifdef __DEBUG__
     cout << "This is a DEBUG version of the program " << endl;
@@ -71,6 +90,7 @@ int main(int argc, char **argv)
     // argv[4] connector port of GUI
     //
     // If not "-gui", following args are free to application
+
     cout << "This version of SPY was fully recompiled "
          << __DATE__
          << "  "
@@ -85,11 +105,13 @@ int main(int argc, char **argv)
         exit(0);
     }
     int runningMode = kRemote;   // runningMode of analysis, kRemote or kBatch
-    go4_gui_mode = true;
+
+    // never used with go4 gui
+   // go4_gui_mode = true;
     if(strcmp(argv[1], "-gui") != 0)
     {
         runningMode = kBatch; // no GUI
-        go4_gui_mode = false ;
+        // go4_gui_mode = false ;
     }
 
     // Now we know the running mode
@@ -154,7 +176,7 @@ int main(int argc, char **argv)
                 maxevents = atoi(argv[2]);
 
             if(argc > 3)
-                starting_event = atoi(argv[3]);
+                starting_event = static_cast<unsigned int> (atoi(argv[3]) );
         }
     }
 
@@ -190,7 +212,7 @@ int main(int argc, char **argv)
 
     // Now setup the EB analysis itself
 
-    TIFJAnalysis*  myanalysis = 0 ;
+    TIFJAnalysis*  myanalysis = nullptr;
     if(flag_strange_source == false)
     {
 //       mylmd += ".lmd"; // input GSI listmode

@@ -25,9 +25,9 @@ using namespace std;
 #endif
 
 
-int empty_function_main(int argc, char *argv[])
-{
-    cout << "Hello, world!" << endl;
+//int empty_function_main(int argc, char *argv[])
+//{
+//    cout << "Hello, world!" << endl;
 
-    return EXIT_SUCCESS;
-}
+//    return EXIT_SUCCESS;
+//}

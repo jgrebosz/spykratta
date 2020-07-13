@@ -3,8 +3,9 @@
 
 //***********************************************************************
 //  constructor
-Tone_signal_module::Tone_signal_module(string _name,
-                                       int TIFJEvent::*first_ptr,
+template <class T>
+Tone_signal_module<T>::Tone_signal_module(string _name,
+                                       T *first_ptr,
                                        string description
                                       ) : Tfrs_element(_name),
     signal_ptr(first_ptr),
@@ -13,12 +14,15 @@ Tone_signal_module::Tone_signal_module(string _name,
     create_my_spectra();
 
 
-    named_pointer[name_of_this_element + "_" +  description + "_raw_(signed)"]
-    = Tnamed_pointer(&signed_signal_data, 0, this) ;
+//    named_pointer[name_of_this_element + "_" +  description + "_raw_(signed)"]
+//    = Tnamed_pointer(&signed_signal_data, 0, this) ;
+    named_pointer[name_of_this_element + "_" +  description + "_raw"]
+    = Tnamed_pointer(&double_signal_data, 0, this) ;
 
 }
 //************************************************************
-void Tone_signal_module::create_my_spectra()
+template <class T>
+void Tone_signal_module<T>::create_my_spectra()
 {
 
     //the spectra have to live all the time, so here we can create
@@ -26,36 +30,38 @@ void Tone_signal_module::create_my_spectra()
 
     string folder = "tests/" + name_of_this_element ;
 
-
     //-----------
     string name = name_of_this_element + "_" + signal_description + "_raw"  ;
     spec_first = new spectrum_1D(name,
-                                 name,
-                                 8192, 0, 8192,
-                                 folder);
+                                 5000, -1000, 4000,
+                                 folder, "", name);
     frs_spectra_ptr->push_back(spec_first) ;
 
     //-----------
 
 }
 //*************************************************************
-void Tone_signal_module::analyse_current_event()
+template <class T>
+void Tone_signal_module<T>::analyse_current_event()
 {
     // cout << "analyse_current_event()  for "
     //         <<  name_of_this_element
     //          << endl ;
 
-    unsigned_signal_data = event_unpacked->*signal_ptr;
-    signed_signal_data = (int)unsigned_signal_data;
+//    unsigned_signal_data = event_unpacked->*signal_ptr;
+    T data = *signal_ptr;
+    double_signal_data = (double)  *signal_ptr;
+   // signed_signal_data = (T)unsigned_signal_data;
 
-    if(signed_signal_data)
-        spec_first ->manually_increment(signed_signal_data) ;
+    if(data)
+        spec_first ->manually_increment(data) ;
 
     calculations_already_done = true ;
 }
 //**************************************************************
 // read the calibration factors, gates
-void  Tone_signal_module::make_preloop_action(ifstream & s)
+template <class T>
+void  Tone_signal_module<T>::make_preloop_action(ifstream & /*s*/)
 {
 
 }

@@ -28,7 +28,7 @@ class spectrum_abstr ;
 class TIFJEvent ;
 
 
-istream & zjedz(istream & plik);
+// istream & zjedz(istream & plik);
 // for spectra, they can contain a standard texts
 
 extern std::string noraw ;

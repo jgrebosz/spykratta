@@ -191,7 +191,7 @@ void Tuser_gated_spectrum_definition::read_definition_from(string file_name)
 }
 //**************************************************************************
 /** save the definition on the disk */
-void Tuser_gated_spectrum_definition::write_definitions(string name)
+void Tuser_gated_spectrum_definition::write_definitions(string /*name*/)
 {
 
 #ifdef NIGDY  // spy never modifies this

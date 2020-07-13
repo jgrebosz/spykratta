@@ -12,19 +12,50 @@ make CFLAGS='-g -O0' CXXFLAGS='-g -O0' clean all
 #include "TIFJEvent.h"
 #include "TIFJAnalysis.h"
 
+#include "TIFJEventProcessor.h"
+
+
 // #include "Go4EventServer/TjurekMbsEvent.h"
 
 #include <iostream> // for test printouts
 #include <iomanip> // for test printouts
 #include <sstream>
+#include <algorithm>
 
 using namespace std;
 
 #include "spectrum.h"
 #include "Tfile_helper.h"
-#include "Trising.h"  // for cluster characters
+#include "tsignal_processing.h"
 
-#include "Tlookup_table_kratta.h"
+#include "Trising.h"  // for cluster characters
+#include "Thector.h"  // for cluster characters
+
+
+#include "visitcard.h"
+#include "DataDecoder.h"
+#include "v1724.h"
+#include "v775.h"
+#include "v785.h"
+#include "v878.h"
+#include "v879.h"
+#include "v830.h"
+
+#include "v1730B.h"
+
+v1730B  d;  // decoder for digitizer
+v775    d775 ("V775");  // decoder for digitizer v775 caen module
+v785    d785 ("V785");  // decoder for digitizer v785 caen module
+v879    d879 ("V879");  // decoder for digitizer v789 caen module
+v1724   d1724; // decoder for module 1724
+v830    d830;
+
+#include "LTable.h"
+LTable *ltb_kratta;
+LTable *ltb_plastic;
+LTable *ltb_paris;
+
+//#include "Tlookup_table_kratta.h"
 #define FOUR_BRANCHES_VERSION   1
 #define NEW_FRS_LOOKUP_TABLE   true
 
@@ -34,11 +65,11 @@ using namespace std;
 //#define LOOKING 1
 static const unsigned TIMESTAMP_QUEUE_MAX = 10; // was 10
 
-extern istream &zjedz(istream &plik);
+//extern istream &zjedz(istream &plik);
 #define DBG(x)     // cout << x << endl
 //******************************************************************
-TIFJEventProcessor::TIFJEventProcessor(string name) :
-    TjurekAbstractEventProcessor(name)
+TIFJEventProcessor::TIFJEventProcessor(string namearg) :
+    TjurekAbstractEventProcessor(namearg)
   #if CURRENT_EXPERIMENT_TYPE == G_FACTOR_OCTOBER_2005
   ,
     lookup_xia_energies(22, 31, "Cluster_energy_xia"),
@@ -103,23 +134,181 @@ TIFJEventProcessor::TIFJEventProcessor(string name) :
     //            __FILE__));
 
 
-    lookup_kratta.read_from_disk("./calibration/geo_map.geo");
+
+    // setup_Piotr_Pawlowski_lookup_tables();
+
 
     flag_old_style_pulser_in_b7 = true; // during commisioninig experiment
     // after discovering first pulser in Master trigger word -
     // this flag will be switched automatically
 
     // we remember for private functions
-    target_event = NULL;
+    target_event = nullptr;
     // TjurekMbsEvent* input_event ;
-    input_subevent = NULL;
-    input_event_data = NULL; // one event buffer
+    input_subevent = nullptr;
+    input_event_data = nullptr; // one event buffer
     how_many_data_words = 0 ; // how many sensible data in the buffer
     memset(&vmeOne[0][0], 0, sizeof(vmeOne));
     memset(&vmeUser[0][0], 0, sizeof(vmeUser));
 
 }
 //******************************************************************
+void TIFJEventProcessor::setup_Piotr_Pawlowski_lookup_tables(string data_fname_with_path)
+{
+
+    //cout << "we are at " << __func__ << endl;
+    static string previous_path;
+
+    string current_path_for_lookup_table = "./calibration/";
+    auto pos = data_fname_with_path. rfind("/");
+    if(pos == string::npos)
+    {
+        // if this from current directory, just use ./calibration
+        current_path_for_lookup_table = "./calibration/";
+    }
+    else{
+        current_path_for_lookup_table = data_fname_with_path.substr(0, pos+1);
+        //cout << "sciezka = " << current_path_for_lookup_table << endl;
+
+    }
+
+
+
+    // if(previous_path == current_path_for_lookup_table ) return; // no work needed
+    previous_path = current_path_for_lookup_table;
+
+    // warning: it always make 'continuation' - so to make it
+    // again, new version we need to reset it somehow;
+    // Piotr promised to make some member function which
+    // will make it.
+
+
+    if(ltb_kratta != nullptr){
+        delete ltb_kratta;
+    }
+    ltb_kratta = new LTable;
+
+    string proper_ltb_file = find_proper_lookuptable_name("kratta.ltb",
+                                                          current_path_for_lookup_table,
+                                                          data_fname_with_path
+                                                          );
+
+
+    ltb_kratta->ReadFile((current_path_for_lookup_table + proper_ltb_file).c_str());
+    //ltb_kratta->ReadFile((current_path_for_lookup_table + "kratta.ltb").c_str()); // lookup table
+
+    //---------------------
+    if(ltb_paris != nullptr){
+        delete ltb_paris;
+    }
+    ltb_paris = new LTable;
+
+    proper_ltb_file = find_proper_lookuptable_name("paris.ltb",
+                                                   current_path_for_lookup_table,
+                                                   data_fname_with_path
+                                                   );
+    ltb_paris->ReadFile((current_path_for_lookup_table + proper_ltb_file).c_str()); // lookup table
+    //ltb_paris->ReadFile((current_path_for_lookup_table + "paris.ltb").c_str()); // lookup table
+
+    //----------------------------- common for plastic and silicon --------------------
+    if(ltb_plastic != nullptr){
+        delete ltb_plastic;
+    }
+    ltb_plastic = new LTable;
+
+
+    proper_ltb_file = find_proper_lookuptable_name("plastic.ltb",
+                                                   current_path_for_lookup_table,
+                                                   data_fname_with_path
+                                                   );
+    ltb_plastic->ReadFile((current_path_for_lookup_table + proper_ltb_file).c_str()); // lookup table
+    // ltb_plastic->ReadFile((current_path_for_lookup_table + "plastic.ltb").c_str()); // lookup table
+
+
+
+    proper_ltb_file = find_proper_lookuptable_name("silicon.ltb",
+                                                   current_path_for_lookup_table,
+                                                   data_fname_with_path
+                                                   );
+    ltb_plastic->ReadFile((current_path_for_lookup_table + proper_ltb_file).c_str()); // lookup table
+
+    //ltb_plastic->ReadFile((current_path_for_lookup_table + "silicon.ltb").c_str()); // lookup table
+}
+//******************************************************************
+string TIFJEventProcessor::find_proper_lookuptable_name(string ltb_name,
+                                                        string current_path_for_lookup_table,
+                                                        string data_file_name_with_path)
+{
+    // making a filter
+    auto kropka_pos =  ltb_name.rfind(".ltb");
+    if(kropka_pos == string::npos)
+    {
+        cout << "Dear Programmer: in the name of lookuptable period is missing" << endl;
+        exit(8);
+    }
+    string filter = ltb_name.substr(0, kropka_pos);
+
+    // look into current path for all lookuptable of this kind
+    auto vec_ltb_names = FH::find_files_in_directory(current_path_for_lookup_table,filter );
+    if(vec_ltb_names.size() == 1)
+    {
+        return vec_ltb_names[0];
+    }
+
+    // sort alphabetically
+    sort(vec_ltb_names.begin(), vec_ltb_names.end() );
+
+    // extract run numbers from these files (making a map?)
+    vector<int>  run_numbers;
+    int run_number;
+    for (unsigned int i = 0 ; i < vec_ltb_names.size(); ++i)
+    {
+        string one_name = vec_ltb_names[i];
+        one_name = one_name.substr(kropka_pos);
+        istringstream s(one_name);
+        s >> run_number;
+        if(!s) run_number = 0;
+        run_numbers.push_back(run_number);
+    }
+    // check
+    //    for(uint n = 0 ; n < run_numbers.size(); ++n)
+    //    {
+    //        cout << n << ") " << run_numbers[n] << " --> "
+    //             << vec_ltb_names[n] << endl;
+    //    }
+
+    // extract the run number from data file
+    auto data_run_pos = data_file_name_with_path.rfind("run");
+    if(data_run_pos == string::npos)
+    {
+        cout <<  "No 'run' in a runfile name?" << data_file_name_with_path << endl;
+        exit(9);
+    }
+    data_run_pos += 3; // 3 letters has string "run"
+    istringstream sd(data_file_name_with_path.substr(data_run_pos));
+    int data_run_nr;
+    sd >> data_run_nr;
+    // cout << "Current run has number " << endl;
+
+
+
+    // check which lookuptable is suitable for this run number
+    string found_ltb_name = ltb_name;
+    for(uint n = 0 ; n < run_numbers.size(); ++n)
+    {
+        if(data_run_nr < run_numbers[n]) continue;
+
+        //        cout << "For run number " << data_run_nr << " is higher or equal "
+        //             << n << ") " << run_numbers[n] << " --> "
+        //             << vec_ltb_names[n] << endl;
+
+        found_ltb_name = vec_ltb_names[n];
+    }
+
+    // cout << "Proper ltb file is:" << found_ltb_name << endl;
+    // return this lookuptable name
+    return found_ltb_name;
+}
 //******************************************************************
 TIFJEventProcessor::~TIFJEventProcessor()
 {
@@ -134,11 +323,7 @@ TIFJEventProcessor::~TIFJEventProcessor()
 void TIFJEventProcessor::BuildEbEvent(
         TGo4EventSourceParameter *source_of_events, TIFJEvent *target)
 {
-    // TRACE((11,"TIFJEventProcessor::BuildEbEvent(TIFJevent*)"
-    // ,__LINE__,
-    // __FILE__));
-
-    // cout << "Function BuildEbEvent================================" << endl;
+    //cout << "Function BuildEbEvent================================" << endl;
 
     source_of_events_ptr = source_of_events;
     target_event = target; // to remember for other private functions
@@ -162,6 +347,18 @@ void TIFJEventProcessor::BuildEbEvent(
     source_of_events->give_next_event(&result);
 
 
+    // perhaps we need a new lookuptable?
+    if(source_of_events->is_new_lookup_table_required())
+    {
+        // extracting path and // installing new lookup table from this path
+        setup_Piotr_Pawlowski_lookup_tables(
+                    source_of_events->give_name_of_source()
+                    );
+        source_of_events->new_lookup_table_just_installed();
+    }
+
+
+
     if(result != GETEVT__SUCCESS) {
         if(result == GETEVT__NOMORE) {
             cout << "Should never come here - the exception should be thrown before"
@@ -178,7 +375,7 @@ void TIFJEventProcessor::BuildEbEvent(
     //     cout << "# Event nr " << current_ev_nr << endl;
 
 
-    if(unpack_the_fast_beam_campaign_event()) {
+    if(unpack_the_CCB_event()) {
         target_event->SetValid(true);
         //         cout << "Correctly reconstructed event ------------" << endl;
 
@@ -193,48 +390,73 @@ void TIFJEventProcessor::BuildEbEvent(
     //     cout << "end of event processor function." << endl;
 }
 //***********************************************************
-bool  TIFJEventProcessor::unpack_kratta_hector_event(const_daq_word_t *data, int how_many_words)
+bool  TIFJEventProcessor::unpack_kratta_hector_event(const_daq_word_t *  /*data*/, int /*how_many_words*/)
 {
+    cout << showbase << dec;
+
+    // cout << "NEW kratta_hector EVENT ===\n";
+
     mbs_listner &mbs = *(source_of_events_ptr->give_mbs());
-    for(int subev_nr = 0;  ;  ++subev_nr) {
+    int how_many_subevents = 99999;// at first we do not know
 
+    // Loop over subevents of this event
+    for(int subev_nr = 0; subev_nr < how_many_subevents ;  ++subev_nr)
+    {
         int result = mbs.get_next_subevent_if_any();
+        how_many_subevents = mbs.give_how_many_subs();
 
-        if(result  != GETEVT__SUCCESS) { // moze bardzej subtelnie? Podwody
+        // cout << "This event has " << how_many_subevents
+        //      << " subevents (now is: " << subev_nr << ")" << endl;
 
+        if(result  != GETEVT__SUCCESS)  // moze bardzej subtelnie? Podwody
+        {
             if(result == GETEVT__NOMORE) {
-//                cout << "Koniec eventu " << current_ev_nr
-//                     << " bec. result is GETEVT__NOMORE = " << result << endl;
+                // cout << "Koniec eventu " << current_ev_nr
+                //      << " bec. result is GETEVT__NOMORE = " << result << endl;
                 break;
             } else {
                 cout << "Very strange error because result is " << result << endl;
                 exit(9);
             }
         }
+        // cout << "------ Subevent nr " << subev_nr << " -----------------------" << endl;
         // recognising
 
 
         uint32_t *data = mbs.data();
-        int length = mbs.length() ;
+        int length = mbs.length();
+        if(length == 0) continue;
 
-        // recognise what to unpack
-//        cout << "Unpacking event nr " << current_ev_nr << " subevent nr " << subev_nr << endl;
-
-
-//        int s = mbs.subtype() ;
-//        int t = mbs.type();
-//        cout << "Subevent  " << s << ",  " << t << ", length " << length << endl;
+        //-----------------------------------------------
+        // Recognise what subevent will be unpacked now
+        //-----------------------------------------------
+        //                cout << "Unpacking event nr " << current_ev_nr << " subevent nr " << subev_nr << endl;
 
 
-        if(mbs.subtype() == 36 && mbs.type() == 2800) {
+        //                int s = mbs.subtype() ;
+        //                int t = mbs.type();
+        //                int p = mbs.procid();
+        //                cout << "Subevent nr " << subev_nr << ", is:  subtype/type " << s << " / " << t << ", procid " << p
+        //                     << ", h_control = " << (int) (mbs.control())
+        //                     << ", length " << length << endl;
+
+
+        if(mbs.subtype() == 36 && mbs.type() == 2800)
+        {
             unpack_trigger_pattern(current_ev_nr, subev_nr, (uint32_t *) data, length);
-        } else if(mbs.subtype() == 36 && mbs.type() == 1) { // rozkodowanie V1724 !!)
-            unpack_caen_v1724(current_ev_nr, subev_nr, (uint32_t *) data, length);
         }
-
-        else if(mbs.subtype() == 10 && mbs.type() == 1) {
-            unpack_10_1(current_ev_nr, subev_nr, (uint32_t *) data, length);
-        } else if(mbs.subtype() == 34 && mbs.type() == 1) {
+        else if(mbs.subtype() == 10 && mbs.type() == 1)
+        {
+            if(mbs.control() == 1){
+                unpack_caen_v1724_kratta_digitizer(current_ev_nr, subev_nr, (uint32_t *) data, length);
+            }
+            else if(mbs.control() == 2){
+                //                if(length > 0)
+                //                    cout << "JEST" << endl;
+                unpack_ccb_non_kratta_z_metryczkami(( (uint32_t *) data), true, length);
+            }
+        }
+        else if(mbs.subtype() == 34 && mbs.type() == 1) {
             unpack_34_1(current_ev_nr, subev_nr, (uint32_t *) data, length);
         } else if(mbs.subtype() == 36 && mbs.type() == 2700) {
             unpack_36_2700(current_ev_nr, subev_nr, (uint32_t *) data, length);
@@ -249,10 +471,7 @@ bool  TIFJEventProcessor::unpack_kratta_hector_event(const_daq_word_t *data, int
                  << endl;
             return false;
         }
-
-    }   // while(1);
-
-
+    }   // end of for over subevents
     return true;
 }
 //***********************************************************
@@ -271,7 +490,7 @@ void TIFJEventProcessor::swap_nr_words(short int *pointer, int how_many)
 //**********************************************************
 //**********************************************************
 /** Checks if the GER event is empty or it has some data */
-bool TIFJEventProcessor::CheckForGerData(const_daq_word_t *data, int length)
+bool TIFJEventProcessor::CheckForGerData(const_daq_word_t */*data*/, int /*length*/)
 {
 #ifdef RISING_GERMANIUMS_PRESENT
     struct vxi_word {
@@ -340,13 +559,13 @@ bool TIFJEventProcessor::CheckForGerData(const_daq_word_t *data, int length)
 }
 
 //************************************************************
-void TIFJEventProcessor::unpack_ger_subevent(const timestamped_subevent &t,
-                                             TIFJEvent *target_event)
+void TIFJEventProcessor::unpack_ger_subevent(const timestamped_subevent &/*t*/,
+                                             TIFJEvent * /*target_event*/)
 {}
 
 //********************************************************************************************************************
-void TIFJEventProcessor::unpack_frs_subevent(const timestamped_subevent &t,
-                                             TIFJEvent *te)
+void TIFJEventProcessor::unpack_frs_subevent(const timestamped_subevent &/*t*/,
+                                             TIFJEvent */*te*/)
 {
     cout << "Empty  function " << endl;
 
@@ -356,7 +575,7 @@ void TIFJEventProcessor::unpack_frs_subevent(const timestamped_subevent &t,
 
 //*******************************************************************************************************************
 void TIFJEventProcessor::distribute_frs_vme_words_to_event_members(
-        TIFJEvent *target_event)
+        TIFJEvent *  /*target_event_arg*/)
 {
 
     if(frsOne_lookup_should_be_loaded) {
@@ -422,9 +641,9 @@ void TIFJEventProcessor::unpack_hec_subevent(const timestamped_subevent &t,
     //     te->HEC_time_since_beginning_of_spill =
     //         te->timestamp_HEC - time_stamp_beg_of_last_spill;
 
-    unsigned int how_many_data_words = t.length();
+    unsigned int how_many_words = t.length();
 
-    for(unsigned int i = 0; i < how_many_data_words; i++) {
+    for(unsigned int i = 0; i < how_many_words; i++) {
         int word = t.give_word(i);
 
         int channel = (word >> 16) & 0xff;
@@ -450,8 +669,8 @@ void TIFJEventProcessor::unpack_hec_subevent(const timestamped_subevent &t,
 }
 //****************************************************************************
 /** unpacking the DGF subevent */
-void TIFJEventProcessor::unpack_dgf_subevent(const timestamped_subevent &t,
-                                             TIFJEvent *te)
+void TIFJEventProcessor::unpack_dgf_subevent(const timestamped_subevent &  /*t*/,
+                                             TIFJEvent * /*te*/)
 {
     //cout << "Unpacking the DGF subevent " << endl;
 
@@ -972,8 +1191,8 @@ void TIFJEventProcessor::unpack_dgf_subevent(const timestamped_subevent &t,
 }
 //****************************************************************************
 /** unpacking the miniball subevent */
-void TIFJEventProcessor::unpack_mib_subevent(const timestamped_subevent &t,
-                                             TIFJEvent *te)
+void TIFJEventProcessor::unpack_mib_subevent(const timestamped_subevent & /*t*/,
+                                             TIFJEvent * /*te*/)
 {
     //  cout << "\nUnpacking the mib subevent " << endl;
 
@@ -1378,6 +1597,8 @@ void TIFJEventProcessor::unpack_mib_subevent(const timestamped_subevent &t,
  reading the time gates for time stamp system */
 
 //************************************************************************
+#if NIGDY
+
 /** reading the types of events which are legal for 4 branches mode of MBS
  reading the time gates for time stamp system */
 //************************************************************************
@@ -1387,7 +1608,7 @@ bool TIFJEventProcessor::read_in_4mbs_parameters(
         string nam_frs_minus_dgf_timestamp_diff,
         string nam_ger_minus_dgf_timestamp_diff,
         string nam_ger_minus_hec_timestamp_diff,
-        string nam_dgf_minus_hec_timestamp_diff)
+        string /*nam_dgf_minus_hec_timestamp_diff*/)
 {
 
     string fname = "./mbs_settings/4_branches_legal_subevent_combinations.dat";
@@ -1589,7 +1810,7 @@ bool TIFJEventProcessor::read_in_4mbs_parameters(
     return true;
 
 }
-
+#endif  // NIGDY
 //*************************************************************************
 void TIFJEventProcessor::postLoop()
 {
@@ -1628,13 +1849,13 @@ void TIFJEventProcessor::trigger_14_block()
         cout << dec
              << i << " as old_long word = "
              << long_data[i]
-             << "  , 0x"
-             << hex << long_data[i]
-             << "  , old_long truncated = "
-             << dec << (long_data[i] & 0x3ffffff)
+                << "  , 0x"
+                << hex << long_data[i]
+                   << "  , old_long truncated = "
+                   << dec << (long_data[i] & 0x3ffffff)
 
-             << dec
-             << endl;
+                   << dec
+                   << endl;
 
     }
 #endif // NEVER
@@ -1821,8 +2042,8 @@ void TIFJEventProcessor::make_report_ger_style()
     for(unsigned int i = 0; i < minimal(1000u, (ger_time_stamps.size())); i++) {
 
         raport << "\nGER[" << i << "] " << ger_time_stamps[i]
-               << "---------------------------------"
-               << ((ger_time_stamps[i].has_1Hz_flag()) ? " !!! 1Hz !!!" : " ");
+                  << "---------------------------------"
+                  << ((ger_time_stamps[i].has_1Hz_flag()) ? " !!! 1Hz !!!" : " ");
 
         //raport << " finding a match in FRS ---------------------\n";
 
@@ -1848,8 +2069,8 @@ void TIFJEventProcessor::make_report_ger_style()
                            // << " !!! "
                         << " (diff=" << difference << ") (prev: "
                         << ((f != 0) ? (frs_time_stamps[f - 1]
-                                        - ger_time_stamps[i]) : 0) << ", next: "
-                        << (frs_time_stamps[f + 1] - ger_time_stamps[i])
+                                       - ger_time_stamps[i]) : 0) << ", next: "
+                                                                  << (frs_time_stamps[f + 1] - ger_time_stamps[i])
                         << ") "
                         << ((frs_time_stamps[f].has_1Hz_flag()) ? "!!! 1Hz!!! "
                                                                 : "")
@@ -1887,12 +2108,12 @@ void TIFJEventProcessor::make_report_ger_style()
                            //<< " !!! "
                         << " (diff =" << difference << ") (prev: "
                         << ((a != 0) ? (hec_time_stamps[a - 1]
-                                        - ger_time_stamps[i]) : 0) << ", next: "
-                        << (hec_time_stamps[a + 1] - ger_time_stamps[i]) << ")"
-                        << ((hec_time_stamps[a].has_1Hz_flag()) ? "!!! 1Hz !!! "
-                                                                : "")
-                           //<< "\n"
-                           ;
+                                       - ger_time_stamps[i]) : 0) << ", next: "
+                                                                  << (hec_time_stamps[a + 1] - ger_time_stamps[i]) << ")"
+                                                                                                                   << ((hec_time_stamps[a].has_1Hz_flag()) ? "!!! 1Hz !!! "
+                                                                                                                                                           : "")
+                                                                                                                      //<< "\n"
+                                                                                                                      ;
             }
         }
 
@@ -1925,12 +2146,12 @@ void TIFJEventProcessor::make_report_ger_style()
                            //<< " !!! "
                         << " (diff =" << difference << ") (prev: "
                         << ((a != 0) ? (dgf_time_stamps[a - 1]
-                                        - ger_time_stamps[i]) : 0) << ", next: "
-                        << (dgf_time_stamps[a + 1] - ger_time_stamps[i]) << ")"
-                        << ((dgf_time_stamps[a].has_1Hz_flag()) ? "!!! 1Hz !!! "
-                                                                : "")
-                           //<< "\n"
-                           ;
+                                       - ger_time_stamps[i]) : 0) << ", next: "
+                                                                  << (dgf_time_stamps[a + 1] - ger_time_stamps[i]) << ")"
+                                                                                                                   << ((dgf_time_stamps[a].has_1Hz_flag()) ? "!!! 1Hz !!! "
+                                                                                                                                                           : "")
+                                                                                                                      //<< "\n"
+                                                                                                                      ;
             }
         }
 
@@ -2178,6 +2399,8 @@ void TIFJEventProcessor::make_report_frs_style()
 }
 //************************************************************************
 
+#if 0  // NIGDY
+
 /** When one of the 3 timestamps que is full, we make report and
  clean them all */
 void TIFJEventProcessor::queue_full_make_timestamp_spectra()
@@ -2360,6 +2583,11 @@ void TIFJEventProcessor::remember_pointers_to_timestamped_spectra(
     spec_ger_minus_mib_timestamp_diff = s8;
 
 }
+
+
+#endif // NIGDY
+
+
 //***************************************************************************
 /** To have a chance to load the lookup table */
 void TIFJEventProcessor::preLoop()
@@ -2367,6 +2595,13 @@ void TIFJEventProcessor::preLoop()
     // this funcion is a kind of preloop, so here
 #ifdef RISING_GERMANIUMS_PRESENT
     lookup.read_from_disk();
+#endif
+
+#ifdef HECTOR_PRESENT
+    Thector::read_lookup_info_from_disk(&HECTOR_ADC_GEO,
+                                        &HECTOR_TDC_GEO,
+                                        &PHOSWITCH_ADC_GEO,
+                                        &PHOSWITCH_TDC_GEO);
 #endif
 
 #if CURRENT_EXPERIMENT_TYPE == G_FACTOR_OCTOBER_2005
@@ -2827,8 +3062,8 @@ void TIFJEventProcessor::preLoop()
     int array_nr = -1;
     while(plik) {
         plik >> zjedz >> geo
-             >> zjedz >> channel
-             >> zjedz  >> array_nr ;
+                >> zjedz >> channel
+                >> zjedz  >> array_nr ;
         if(plik.eof()) break;
 
         //     cout  << "Read geo " << geo << ", ch = " << channel << ", array_nr=" << array_nr << endl;
@@ -3978,6 +4213,9 @@ bool TIFJEventProcessor::try_to_5reconstruct_event(TIFJEvent *te)
     return false; // we should never be here
 
 }
+
+
+#if 0  // NIGDY
 //*****************************************************************************************
 /** reading the types of events which are legal for 5 branches mode of MBS
  reading the time gates for time stamp system */
@@ -3987,7 +4225,7 @@ bool TIFJEventProcessor::read_in_5mbs_parameters(
         string nam_frs_minus_dgf_timestamp_diff,
         string nam_ger_minus_dgf_timestamp_diff,
         string nam_ger_minus_hec_timestamp_diff,
-        string nam_dgf_minus_hec_timestamp_diff,
+        string /*nam_dgf_minus_hec_timestamp_diff*/,
         string nam_frs_minus_mib_timestamp_diff,
         string nam_ger_minus_mib_timestamp_diff)
 {
@@ -4315,6 +4553,9 @@ bool TIFJEventProcessor::read_in_5mbs_parameters(
     return true;
 
 }
+#endif // NIGDY
+
+
 /** No descriptions ***************************************************************/
 // in the lookup table there is also information where
 // to find time calibrator singanl for two vxi crates of GER
@@ -4347,6 +4588,10 @@ void TIFJEventProcessor::read_ger_synchro_group_item()
         throw;
     }
 }
+
+
+
+
 //******************************************************************************************************
 void TIFJEventProcessor::read_frsOne_lookup_table()
 {
@@ -4931,6 +5176,9 @@ void TIFJEventProcessor::read_frsOne_lookup_table()
 }
 //************************************************************************************
 
+
+
+
 //******************************************************************************************************
 void TIFJEventProcessor::read_frsUser_lookup_table()
 {
@@ -5116,19 +5364,21 @@ void TIFJEventProcessor::read_frsUser_lookup_table()
     }
     plik.close();
 }
+
+#ifdef NIGDY
+#endif  // NIGDY
+
+
 //************************************************************************************
-
-
 /** This is the function which reads new style of event - characteristic
- to the fast beam campaign. There is no timestamp matching, everything
+ to the CCB. There is no timestamp matching, everything
  comes together as one event (with subevent parts) */
-bool TIFJEventProcessor::unpack_the_fast_beam_campaign_event()
+bool TIFJEventProcessor::unpack_the_CCB_event()
 {
-    //cout << "===== function :unpack_the_fast_beam_campaign_event() "
-    //  << counter_put << endl;
+//    cout << "===== function :unpack_the_CCB_event() " << counter_put << endl;
 
     static time_t last = 0;
-    time_t now = time(0);
+    time_t now = time(nullptr);
 
     if(now - last >= 10) {
         if(now - last < 9999) {
@@ -5157,18 +5407,8 @@ bool TIFJEventProcessor::unpack_the_fast_beam_campaign_event()
 
 
     if(
-
-        #if CURRENT_EXPERIMENT_TYPE==PISOLO2_EXPERIMENT
-            !unpack_pisolo_event     // Alberto Stefanini
-            (input_event_data, how_many_data_words)
-        #elif CURRENT_EXPERIMENT_TYPE==EXOTIC_EXPERIMENT
-            ! unpack_exotic_event_from_raw_array   // <------- for exotic block
-            (input_event_data, how_many_data_words)
-        #elif CURRENT_EXPERIMENT_TYPE==PRISMA_EXPERIMENT
-            ! unpack_prisma_event(input_event_data, how_many_data_words)
-        #elif CURRENT_EXPERIMENT_TYPE==IFJ_KRATTA_HECTOR_EXPERIMENT
+        #if CURRENT_EXPERIMENT_TYPE==IFJ_KRATTA_HECTOR_EXPERIMENT
             ! unpack_kratta_hector_event(input_event_data, how_many_data_words)
-
         #else
         #error "Other experiments not listed here "
         #endif
@@ -5188,1838 +5428,16 @@ bool TIFJEventProcessor::unpack_the_fast_beam_campaign_event()
 }
 //*******************************************************************************
 //************************************************************************************
-/** unpacking the timing module subevent */
-bool TIFJEventProcessor::unpack_timing_module_subevent(
-        const_daq_word_t *long_data, int how_many_words)
-{
-
-#if ((CURRENT_EXPERIMENT_TYPE == RISING_STOPPED_BEAM_CAMPAIGN) ||     \
-    (CURRENT_EXPERIMENT_TYPE == RISING_ACTIVE_STOPPER_BEAM_CAMPAIGN) \
-    || (CURRENT_EXPERIMENT_TYPE == RISING_ACTIVE_STOPPER_APRIL_2008) \
-    || (CURRENT_EXPERIMENT_TYPE == RISING_ACTIVE_STOPPER_JULY_2008) \
-    || (CURRENT_EXPERIMENT_TYPE == RISING_ACTIVE_STOPPER_100TIN ))
-
-    // Henning says that here there are 4 Caen V775 TDCs (range 1.2 us)
-    // and the old_long range CAEN TDC V767 - which has 128 channels in one card
-
-#define SPEAK_TIMING 0
-#define DBGT  if(SPEAK_TIMING)
-
-    //   DBGT
-    //   {
-    //     cout << "To unpack there is " << how_many_words << " words \n";
-    //
-    //
-    //     for(int i = 0 ; i < how_many_words ; i++)
-    //   {
-    //     cout << "[" << i << "]  0x" << hex <<  long_data[i]
-    //       << ",  dec = " <<  dec <<  long_data[i] << endl;
-    //
-    //     }
-    //   }
-
-
-    /* is i header
-     /////////////////////////////////////////
-     class vme767_header_word
-     {
-     public:
-     unsigned int evnet_nr: 12;
-     unsigned int         : 9;
-     //unsigned int header  : 1;
-     unsigned int code    : 2;
-     unsigned int         : 4;
-     unsigned int geo     : 5 ;
-     };
-     /////////////////////////////////////////
-     class vme767_data_word
-     {
-     public:
-     unsigned int time_data  : 20;
-     unsigned int edge       : 1;
-     // unsigned int eob        : 1;
-     // unsigned int header     : 1;
-     unsigned int code    : 2;
-     unsigned int start      : 1;
-     unsigned int channel    : 7;
-     };
-     /////////////////////////////////////////
-     class vme767_eob_word
-     {
-     public:
-     unsigned int ev_counter   : 16 ;
-     unsigned int  : 5 ;
-     // unsigned int eob        : 1;
-     // unsigned int header     : 1;
-     unsigned int code    : 2;
-     unsigned int  : 1 ;
-     unsigned int status : 3 ;
-     unsigned int geo     : 5 ;
-     };
-     /////////////////////////////////////////
-     /////////////////////////////////////////
-     union vme767_word
-     {
-     daq_word_t           raw_word ;
-     vme767_header_word      header_word ;
-     vme767_data_word        data_word ;
-     vme767_eob_word         end_of_block_word ;
-     };
-
-     union general_vme_word
-     {
-     vme767_word word767;
-     vme_word    word775;
-     };
-
-     --------------------*/
-
-    // at first there are VME 775 VME data ########################
-    // loop over unknown nr of words
-
-    general_vme_word word;
-
-    int counter775modules = 0;
-    // zero was used, now we start from 1
-    unsigned int current_geo = 0;
-
-    enum typ_of_block {typ_vme775, typ_vme767};
-    typ_of_block current_vme_blok = typ_vme775;
-
-    for(int i = 0; i < how_many_words; i++) {
-        DBGT cout << "Unpacking word " << i << ": 0x"
-                  << hex << long_data[i] << dec << endl;
-        word.word775.raw_word = long_data[i];
-        if(!word.word775.raw_word) {  // do not analyse empty words
-            continue;
-        }
-
-        // Sometimes Henning is sending the extra word on the end of the VME block
-        // with the pattern 0xbabe****
-        if((word.word775.raw_word & 0xffff0000) == 0xbabe0000) {
-            DBGT cout << "babe word ==============" << endl;
-            break; // end of data at all, so end of the loop
-        }
-
-        // at first there will be information from the FOUR  vme775 blocks and then
-        // information from the vme767
-
-        if(counter775modules >= 4)
-            current_vme_blok = typ_vme767;
-
-        switch(current_vme_blok) {
-        case typ_vme775: //-----------------------------------------------------------------
-            // Sometimes Henning is sending the extra word on the end of the VME block
-            // with the pattern 0xbabe****
-
-            switch(word.word775.header_word.code) {  // <-- it is common to all of types of vme words
-
-            case 2: {
-                DBGT cout << "Caen V775 TDC Header .." << endl;
-                //counter775modules++;
-            }
-                break;
-
-            case 0:
-                // sizes are hardcoded in the class definition
-                if(word.word775.data_word.geo < 22 && word.word775.data_word.channel < 32) {
-
-                    DBGT cout << "Arrived TIME geo = " << word.word775.data_word.geo
-                              << ", chan = " << word.word775.data_word.channel
-                              << ", data = " << word.word775.data_word.data
-                              << endl;
-
-                    int clus = 0;
-                    int crys = 0;
-                    if(lookup_SR_times.current_combination(word.word775.data_word.geo,
-                                                           word.word775.data_word.channel,
-                                                           &clus,
-                                                           &crys)) {
-
-                        DBGT cout << " --- this is time for cluster "
-                                     //          << clus
-                                     //          << " crystal " << crys
-                                     //          << " which is "
-                                  << Trising::cluster_characters[clus] << "_"
-                                  << char('1' + crys) << endl;
-
-                        // storing the time data
-                        // no need to we reduce the  resolution from 64 KB to 8KB !!!
-                        target_event->ge_time_SR[clus][crys] = word.word775.data_word.data;
-                        target_event->ger_xia_dgf_fired[clus][crys] = true;
-                    } else {
-                        static int licznik;
-                        if(!((licznik++) % 20000))
-                            cout << "DGF unpacking. Warning: combination GEO = "
-                                 << word.word775.data_word.geo
-                                 << ", CHANNEL = " << word.word775.data_word.channel
-                                 << " was not specified in a lookup table Cluster_SR_time_xia"
-                                 << endl;
-
-                    }
-                }
-                break;
-
-            case 4:
-                DBGT cout << "Footer  when i = .." << i << endl;
-                counter775modules++;
-                break;
-            case 6:
-                DBGT cout << "'Not valid datum for this TDC when i = .." << i
-                          << " vme module nr " << counter775modules << " didn't fired " << endl;
-                counter775modules++;
-
-                break;
-
-            default :
-                DBGT cout << "Error - unknown code in VME time information  when i = .." << i << endl;
-                break;
-            } // endof inner switch
-
-            break;
-
-            // ########################################################################
-        case typ_vme767: //---------------------------------------------------------------------
-
-            switch(word.word767.header_word.code) {  // <-- it is common to all of types of vme words
-
-            case 2: {
-                DBGT cout << "Caen TDC V767 Header ------------------------" << endl;
-                current_geo = word.word767.header_word.geo;
-            }
-                break;
-
-            case 0:
-                // sizes are hardcoded in the class definition
-                if(current_geo < 222 /*was 22*/ && word.word767.data_word.channel < 129) {
-
-                    DBGT cout << "Arrived TIME geo = " << current_geo
-                              << ", chan = " << word.word767.data_word.channel
-                              << ", data = " << word.word767.data_word.time_data
-                              << endl;
-
-                    int clus = 0;
-                    int crys = 0;
-                    if(lookup_LR_times.current_combination(
-                                current_geo,
-                                word.word767.data_word.channel,
-                                &clus,
-                                &crys)) {
-
-                        DBGT cout << " --- this is time for cluster "
-                                     //          << clus
-                                     //          << " crystal " << crys
-                                     //          << " which is "
-                                  << Trising::cluster_characters[clus] << "_"
-                                  << char('1' + crys) << endl;
-
-                        // storing the time data
-                        // no need to we reduce the  resolution from 64 KB to 8KB !!!
-
-                        // Note: this block can deliver more than one data for the same channel in the
-                        // same event. We take only the first. (How we do check If this is the first occurence?
-                        // We just check in in the target event if there is something
-                        // already from this event (zero value means - this is the frist)
-
-                        if(target_event->ge_time_LR[clus][crys] == 0) {
-                            target_event->ge_time_LR[clus][crys] = word.word767.data_word.time_data;
-                            target_event->ger_xia_dgf_fired[clus][crys] = true;
-                        }
-                    }
-
-                    // if this was not found in the lookup table - possible that it
-                    // was so called Plastic time information, which is also transmited
-                    // in this block
-                    else if((ger_plastic_LR_time_geo == current_geo)
-                            &&
-                            (ger_plastic_LR_time_channel == word.word767.data_word.channel)) {
-                        target_event->Plastic_LR_time = word.word767.data_word.time_data;
-                    }
-#ifdef ACTIVE_STOPPERS_SECOND_AND_THIRD_HIT_IN_THE_TIME_GATE
-                    else if((ger_Silicon_LR_trigger_time_geo == current_geo)
-                            &&
-                            (ger_Silicon_LR_trigger_time_channel == word.word767.data_word.channel)) {
-                        // as it is a multi hit device, that means that in one event it can come 3 time.
-                        // so we have to place it in one of the 3 elements of the array
-                        int nr = 0;
-                        if(target_event->Silicon_LR_trigger_time[0]) {  // <-- if already occupied
-                            nr++;
-                            if(target_event->Silicon_LR_trigger_time[1]) {  // <-- if already occupied
-                                nr++;
-                                if(target_event->Silicon_LR_trigger_time[2])    // <-- if already occupied
-                                    nr++; // <-- this means more than 3 hit, forget it
-                            }
-                        }
-                        // now we know the indeks
-                        if(nr >= 0 && nr <= 2) {
-                            target_event->Silicon_LR_trigger_time[nr] = word.word767.data_word.time_data;
-                        } else {
-                            cout << "Placing Silicon_LR_trigger_time   index 'nr' is out of range (" << nr << ")" << endl;
-                        }
-                    }
-#endif
-                    else {
-                        //                              cout << "TIME unpacking. Warning: combination GEO = "
-                        //                                 << current_geo
-                        //                                 << ", CHANNEL = " << word.word767.data_word.channel
-                        //                                 << " was not specified in a lookup table Cluster_LR_time" << endl;
-                    }
-
-                }
-                break;
-
-            case 1:
-                DBGT cout << "Footer  when i = .." << i << endl;
-            {
-                // local scope
-                static int how_many_errors;
-                if(word.word767.end_of_block_word.status) {
-                    how_many_errors++;
-                    if(flag_accept_single_ger && flag_accept_single_dgf) {
-                        static time_t last_message = time(NULL);
-                        if((time(NULL) - last_message > 5) && (how_many_errors > 500)) {         // every 5 seconds
-                            last_message = time(NULL);
-                            cout << "Error status in Caen 767 block (which deliveres LR time). Please reset it"
-                                 << endl;
-
-                            //cout << "This is sorting online " << endl;
-
-                            ofstream plik("./commands/synchronisation_lost.txt");
-                            plik
-                                    << "Long Range TDC status Watchdog barks !\n"
-                                    << "The Status bitfield in NON ZERO.\n  "
-                                    << "\nNote: - If you do not care about this (for example you are interested only in FRS)\n"
-                                       "Please go:\n"
-                                       "Spy_options->Matching of MBS subevent->Modify above parameters (wizard)->5 branches [next]->\n"
-                                       "->Do not make matching [next]-> here please uncheck the fields 'GER' and 'DGF',\n"
-                                       "Then finish the wizard (and update spy if it is running)"
-                                    << endl;
-                            plik.close();
-
-                        } // every 5 seconds
-
-                        return false;
-                    }
-
-                } else { // no error in status
-                    how_many_errors = 0;
-                }
-            } // locaal
-                break;
-            case 3:
-                DBGT cout << " 'Not valid datum for this TDC when i = .." << i << endl;
-                break;
-
-            default :
-                DBGT cout << "no Code,  i = .." << i << endl;
-                break;
-            }
-
-            break;
-
-        }// end of  switch(current_vme_blok)
-
-    } // end of for i
-#endif
-    return true;
-
-}
 //****************************************************************************************
-/** This function is unpacking  directly  from the LMD data block  */
-bool TIFJEventProcessor::unpack_pisolo_event(
-        const_daq_word_t *data, int how_many_words)
-{
-    //   cout << " F.  unpack_pisolo_event" << endl;
-
-#ifdef OLD_PISOLO_DATA
-
-    return   unpack_OLD_pisolo_event(data, how_many_words);
-
-#else
-
-    // warning: this function should not destroy this was is done by other frs_user function
-
-
-    vme_775_word word;
-    if(flag_vmeOne_zeroing_needed) { // to zeroing before frs or frs_user unpacking function
-        memset(&vmeOne[0][0], 0, sizeof(vmeOne));
-        flag_vmeOne_zeroing_needed = false;
-    }
-
-    for(int i = 0; i < how_many_words; i++) {
-        word.raw_word = data[i];
-
-        if(!word.raw_word) { // do not analyse empty words
-            // just skip, do not complain
-            continue;
-        }
-
-        switch(word.header_word.code)  // <-- it is common to all of
-            // types of vme words
-        {
-
-        case 2: // this is a header
-            //cout << "This is the vme header ..........." << endl;
-            // normally we do not care, but if it is geo 6...
-#ifdef NIGDY
-
-            if(word.header_word.geo == 6) {
-                // this block nr 6 works with different convention.
-                // Data words just follow header by many (32) raw data words
-                for(unsigned int k = 0; k < word.header_word.cnt; k++) {
-                    // each data word is comming from some channel, so we place it into vme array
-                    //cout << "[" << k << "] " <<  data[1+i+k] << " "<< endl ;
-                    vmeOne[word.header_word.geo][k] = data[i + k + 1];
-                }
-                //vme[word.header_word.geo][3] = 77;
-                //cout << endl;
-
-#ifdef NIGDY
-                this was old style, now we do
-                        it by lookup table
-                        target_event->scaler_ch_1_free_triggers = data[i + 1];
-                target_event->scaler_ch_2_accepted_triggers = data[i + 2];
-                target_event->scaler_ch_3_seetram_digitizer = data[i + 3];
-                target_event->scaler_ch_4_spills = data[i + 4];
-                target_event->scaler_ch_5_seconds = data[i + 5];
-                target_event->scaler_ch_6_sc01_free = data[i + 6];
-                target_event->scaler_ch_7_sc21_free = data[i + 7];
-                target_event->scaler_ch_8_sc41_free = data[i + 8];
-#endif  // nigdy
-                // after copying, we jump over them in the outer loop, they are processed
-                i += word.header_word.cnt;
-            }
-#endif  // nigdy
-            break;
-
-        case 0:
-            // sizes are hardcoded in the class definition
-            //             cout << "Code is 0, data word" << endl;
-
-            // loading into the vme table.
-            if(word.data_word.geo < 22 && word.data_word.channel < 32) {
-                vmeOne[word.data_word.geo][word.data_word.channel]
-                        = word.data_word.data;
-            }
-            // trap for debugging
-            //if (word.data_word.geo == 3 && (word.data_word.channel == 0))
-        {
-
-            //         cout << "Data word in the event,  Now:   vme["
-            //         << word.data_word.geo << "][" << word.data_word.channel
-            //         << "] has value = " << word.data_word.data << endl;
-            //
-            //         cout << " YES, raw value = " << hex << (word.raw_word & 0xffff)
-            //         << dec << endl;
-        }
-            break;
-
-        case 4:
-            //cout << "Code 4 = End of block\n" << endl;
-            break;
-
-        case 6:
-            //cout << "Code 6 = Not valid datum \n" << endl;
-            break;
-
-        default:
-            cout << "Unknown VME Code  = " << word.header_word.code << ",  LINE= " << __LINE__ << endl;
-
-            break;
-        }
-    }
-#endif
-
-    return true;
-}
-
 //****************************************************************************************
-/** This function is unpacking not from the timestamped subevent, but just directly  from the MBS data block  */
-bool TIFJEventProcessor::unpack_OLD_pisolo_event(
-        const_daq_word_t *data, int how_many_words)
-{
-    //   cout << " F.  unpack_OLD_pisolo_event" << endl;
-#if CURRENT_EXPERIMENT_TYPE    ==   PISOLO2_EXPERIMENT
-
-    vme_775_word word;
-    if(flag_vmeOne_zeroing_needed) { // to zeroing before frs or frs_user unpacking function
-        memset(&vmeOne[0][0], 0, sizeof(vmeOne));
-        flag_vmeOne_zeroing_needed = false;
-    }
-
-
-    // the Old Pisolo data  is 16 bit long  (shor int?)
-
-    typedef unsigned short int   oldpisolo_t ;
-
-    oldpisolo_t *buffer = (oldpisolo_t *) data;
-
-    for(int i = 0; i < how_many_words; i++) {
-        if(!buffer[i])
-            continue;
-
-        //      if(i == 13 || i == 14 )    cout << i << ") =======> " << showbase << hex<<  buffer[i] << dec << " dec = " << buffer[i]  << endl;;
-
-        //if(i > 4)
-        {
-            //       cout << "Hurra " << endl;
-            //       cout << "Hurra " << endl;
-            //       cout << "Hurra " << endl;
-            switch(i) {
-            case 5:
-                target_event->pisolo_mcp01_x = buffer[i];
-                break;  // micro channel plate detectors measuring position
-            case 6:
-                target_event->pisolo_mcp01_y = buffer[i];
-                break;
-            case 7:
-                target_event->pisolo_mcp02_x = buffer[i];
-                break;
-            case 8:
-                target_event->pisolo_mcp02_y = buffer[i];
-                break;
-
-                //case 12: //9:
-                //target_event->pisolo_si_target_en = buffer[i]; break;    // EN is the energy released in the Si detector
-
-            case 10:
-                target_event->pisolo_tof2 = buffer[i];
-                break;
-            case 11:
-                target_event->pisolo_deltaE[0] = buffer[i];
-                break;     // DE is the Delta E signal from the ionization chamber IC
-
-            case 9:
-                target_event->pisolo_si_final = buffer[i];
-                break;    // E   in the Si detector
-            case 12:
-                target_event->pisolo_dE_res = buffer[i];     // Eres (gas)
-                break;    // Eres is the residual energy released in the IC (normally zero)
-
-            case 13:
-                target_event->pisolo_mon_lr = buffer[i];
-                break;
-            case 14:
-                target_event->pisolo_mon_ud = buffer[i];
-                break;
-            case 15:
-                target_event->pisolo_tof1 = buffer[i];
-                break;
-            case 16:
-                target_event->pisolo_tof3 = buffer[i];
-                break;
-            default:
-                break;
-            }
-        }
-    }
-#endif
-    return true;
-}
 //***************************************************************************************
 
 //***************************************************************************************
-bool TIFJEventProcessor::unpack_exotic_event_from_raw_array(
-        const_daq_word_t *data, int how_many_words)
-{
-    //   cout << " F.  unpack_exotic_event_from_raw_array =====================================" << endl;
-    // warning: this function should not destroy this was is done by other frs_user function
-
-#if CURRENT_EXPERIMENT_TYPE==EXOTIC_EXPERIMENT
-    struct exotic_data_word {
-        unsigned int data :
-            12;
-        unsigned int ovr :
-            1;
-        unsigned int not_used :
-            3;
-        unsigned int sample :
-            4;
-        unsigned int va_channel :
-            5;
-        unsigned int adc_channel :
-            3;
-        unsigned int event_counter :
-            3;
-        unsigned int data_word_identification :
-            1;
-    };
-
-    struct exotic_header_word {
-        unsigned int module :
-            8;
-        unsigned int modality_code :
-            4;
-        unsigned int trigger :
-            4;
-        unsigned int event_counter :
-            14;
-        unsigned int not_used_header_identification :
-            1;
-        unsigned int header_identification :
-            1;
-    };
-
-    union exotic_word {
-        exotic_data_word            data_word;
-        exotic_header_word          header_word;
-        unsigned long                   raw_word;
-        vme_785_word    word785;   // defined in the header of this file
-    };
-
-    exotic_word word;
-
-    if(flag_vmeOne_zeroing_needed) { // to zeroing before frs or frs_user unpacking function
-        memset(&vmeOne[0][0], 0, sizeof(vmeOne));
-        flag_vmeOne_zeroing_needed = false;
-    }
-
-    int exotic_block_number = 0 ;   // there can be more than one electronic block
-
-
-    how_many_words = data[0] ;
-    //   cout << "Nr of words is " << how_many_words << endl;
-    int how_many_exotic_blocks = 1;
-
-    for(int i = 1; i < how_many_words + 1 ; i++) {  // counter word was 'not counted'
-        word.raw_word = data[i];
-        if(!word.raw_word) { // do not analyse empty words
-            // TODO complain
-            continue;
-        }
-
-        //     cout << "word  " << i << ")   0x" << hex << word.raw_word << dec << endl;
-
-        if(word.raw_word == 0xeeeeeeee  || word.raw_word == 0xffffffff) {
-            //       cout << "word  " << i << ")   0x" << hex << word.raw_word << dec << endl;
-            exotic_block_number++;
-            //       cout << "exotic_block_number = " << exotic_block_number
-            //       << " +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << endl;
-            continue;
-        }
-
-        if(exotic_block_number < how_many_exotic_blocks) {
-            switch(word.header_word.header_identification)  // <-- it is common to all of
-                // types of vme words
-            {
-
-            case 1: // this is a header
-                //       cout << "word " << i << ")   This is the exotic header ..........." << endl;
-                //
-                //             cout
-                //                 << "HEADER WORD. Module = " << word.header_word.module
-                //                 << ", modality_code = " << word.header_word.modality_code
-                //                 << ", trigger = " << word.header_word.trigger
-                //                 << ", event_counter = " << word.header_word.event_counter
-                // //       << "================================================================="
-                //                 << endl;
-
-                break;
-
-            case 0:
-                // sizes are hardcoded in the class definition
-                //       cout << "Code is 0, this is a data word" << endl;
-
-                // if( word.data_word.adc_channel < 3)
-
-                //       cout
-                //       << "DATA WORD.  data = " << word.data_word.data
-                //       << ", ovr = " << word.data_word.ovr
-                //       << ", sample = " << word.data_word.sample
-                //       << ", va_channel = " << word.data_word.va_channel
-                //       << ", adc_channel = " << word.data_word.adc_channel
-                //       << ", event_counter = " << word.data_word.event_counter
-                //       << endl;
-
-                int module_modified = word.data_word.adc_channel  + (8 * exotic_block_number);
-                int sample = word.data_word.sample;
-                if(sample > 7) {
-                    sample -= 8;
-                } else {
-                    //         cout << "No need to subtract 8 ---------------------------------------------------------------------------------------------------------------" << endl;
-                }
-                if(
-                        module_modified < NR_OF_EXOTIC_MODULES
-                        &&  module_modified >= 0
-
-                        && word.data_word.va_channel < NR_OF_EXOTIC_STRIPES_X
-                        && word.data_word.va_channel >= 0
-
-                        && (sample < NR_OF_EXOTIC_SAMPLES)
-                        && (sample >= 0)
-                        ) {
-                    target_event->exotic_data[module_modified]
-                            [word.data_word.va_channel]
-                            [sample] = word.data_word.data;
-
-                    target_event->exotic_data_fired[module_modified] = 1; // fired
-                } else {
-
-                    cout
-                            << "TIFJEventProcessor::unpack_exotic_event_from_raw_array   -  Rejected event"
-                            << "\n for electronic exotic block nr [0 - n] :  " << exotic_block_number
-                            << "\nbecause \n" ;
-
-                    if(module_modified >= NR_OF_EXOTIC_MODULES) {
-                        cout << " module_modified = " << module_modified
-                             << " while it should be smaller than " << NR_OF_EXOTIC_MODULES
-                             << endl;
-                    }
-
-                    if(word.data_word.va_channel >= NR_OF_EXOTIC_STRIPES_X) {
-                        cout << " va_channel = " << word.data_word.va_channel
-                             << " while it should be smaller than " << NR_OF_EXOTIC_STRIPES_X
-                             << endl;
-                    }
-
-                    if((sample) >  NR_OF_EXOTIC_SAMPLES) {
-                        cout
-                                << " sample = " << sample
-                                << " while it should be smaller than " << NR_OF_EXOTIC_SAMPLES
-                                << endl;
-                    }
-
-                    cout
-                            << "\nmodule_modified = " << module_modified
-                            <<  ", word.data_word.va_channel = " << word.data_word.va_channel
-                             << ", word.data_word.sample = " << word.data_word.sample
-                             << endl;
-
-                    cout << " well? ... " << endl;
-                }
-
-                // trap for debugging
-                //             if(word.data_word.geo == 3  && (word.data_word.channel == 0))
-                //             {
-                //
-                //                 cout << "Data word in the event,  Now:   vme[" << word.data_word.geo << "]["
-                //                 << word.data_word.channel << "] has value = "
-                //                 << word.data_word.data
-                //                 << endl;
-
-                // //                 cout << " YES, raw value = " << hex << (word.raw_word & 0xffff )
-                // //                 << dec << endl;
-                //             }
-                break;
-
-            } // end switch
-        } else { // this is not exotic card, but CAEN  775
-
-            switch(word.word785.header_word.code) {  // <-- it is common to all of types of vme words
-
-            case 2: {
-                //    cout << "Caen V785 TDC Header .." << endl;
-                //counter775modules++;
-            }
-                break;
-
-            case 0:
-                // sizes are hardcoded in the class definition
-                if(word.word785.data_word.geo < 22 && word.word785.data_word.channel < 32) {
-
-
-                    //           cout << "Arrived TIME geo = " << word.word785.data_word.geo
-                    //           << ", chan = " << word.word785.data_word.channel
-                    //           << ", data = " << word.word785.data_word.data
-                    //           << endl;
-
-                    int clus = 0;
-                    int crys = 0;
-                    if(true)
-                        //           if ( lookup_SR_times.current_combination ( word.word775.data_word.geo,
-                        //                word.word775.data_word.channel,
-                        //                &clus,
-                        //                &crys ) )
-                    {
-                        //
-                        //              cout << " --- this is time for cluster "
-                        //             //          << clus
-                        //             //          << " crystal " << crys
-                        //             //          << " which is "
-                        //             << Trising::cluster_characters[clus] << "_"
-                        //             << char ( '1' + crys ) << endl;
-                        //
-                        //             // storing the time data
-                        //             // no need to we reduce the  resolution from 64 KB to 8KB !!!
-                        target_event->v785[word.word785.data_word.channel] =  word.word785.data_word.data;
-
-                    } else {
-                        static int licznik;
-                        //              if ( ! ( ( licznik++ ) %2 ) )
-                        cout << "exotic unpacking of CAEN V785 Warning: combination GEO = "
-                             << word.word785.data_word.geo
-                             << ", CHANNEL = " << word.word785.data_word.channel
-                             << " was not specified "
-                                // "in a lookup table Cluster_SR_time_xia"
-                             << endl;
-
-                    }
-                }
-                break;
-
-            case 4:
-                //         cout << "Footer  when i = .." << i << endl;
-                //         counter785modules++;
-                break;
-            case 6:
-                //         cout << "'Not valid datum for this v785 "
-                //  << endl;
-                //         counter785modules++;
-
-                break;
-
-            default :
-                cout << "Error - unknown code in VME time information  when i = .." << i << endl;
-                break;
-            } // endof inner switch
-        } // end else 785
-    }
-    //     cout << "End of function ====================================" << endl;
-    return true;
-#else
-    return false;
-#endif   //CURRENT_EXPERIMENT_TYPE==EXOTIC_EXPERIMENT
-
-}
 //****************************************************************************************
-/** No descriptions */
-void TIFJEventProcessor::read_ger_plastic_time_lookup_data()
-{
-#if ((CURRENT_EXPERIMENT_TYPE == RISING_STOPPED_BEAM_CAMPAIGN) ||         (CURRENT_EXPERIMENT_TYPE == RISING_ACTIVE_STOPPER_BEAM_CAMPAIGN) \
-    || (CURRENT_EXPERIMENT_TYPE == RISING_ACTIVE_STOPPER_APRIL_2008)\
-    || (CURRENT_EXPERIMENT_TYPE == RISING_ACTIVE_STOPPER_JULY_2008)  \
-    || (CURRENT_EXPERIMENT_TYPE == RISING_ACTIVE_STOPPER_100TIN ))
-
-    string fname = "./mbs_settings/lookup_table.txt";
-    ifstream plik(fname.c_str());
-    if(!plik) {
-        cout << "!!! Fatal error: I can't open file " << fname << endl;
-        exit(1);
-    }
-
-    try {
-        ger_plastic_LR_time_geo
-                = (unsigned int) FH::find_in_file(plik, "Plastic_LR_time");
-        plik >> zjedz >> ger_plastic_LR_time_channel;
-
-        // TRAYs
-
-        ge_plastic_time_tray0_geo = (unsigned int) FH::find_in_file(plik, "Plastic_xia_time_tray_0");
-        plik >> zjedz >> ge_plastic_time_tray0_channel;
-
-        ge_plastic_time_tray1_geo
-                = (unsigned int) FH::find_in_file(plik, "Plastic_xia_time_tray_1");
-        plik >> zjedz >> ge_plastic_time_tray1_channel;
-
-        ge_plastic_time_tray2_geo
-                = (unsigned int) FH::find_in_file(plik, "Plastic_xia_time_tray_2");
-        plik >> zjedz >> ge_plastic_time_tray2_channel;
-
-        try {
-            // kind of dummy, Stephan sometimes sends new data
-            ge_plastic_time_tray3_geo
-                    = (unsigned int) FH::find_in_file(plik, "Plastic_xia_time_tray_3");
-            plik >> zjedz >> ge_plastic_time_tray3_channel;
-        } catch(...) {
-            ge_plastic_time_tray3_geo = 0;
-            ge_plastic_time_tray3_channel = 0;
-        }
-
-#ifdef ACTIVE_STOPPERS_SECOND_AND_THIRD_HIT_IN_THE_TIME_GATE
-        try {
-
-            // in case if the previous keywords throwed the exception
-            plik.clear(plik.rdstate() & ~(ios::failbit | ios::eofbit));
-
-            ger_Silicon_LR_trigger_time_geo
-                    = (unsigned int) FH::find_in_file(plik, "Silicon_LR_trigger_time");
-
-            plik >> zjedz >> ger_Silicon_LR_trigger_time_channel;
-        } catch(Tfile_helper_exception &m) {
-            cout << "Error while reading the file " << fname << "\n\t"
-                 << m.message << endl;
-            ger_Silicon_LR_trigger_time_geo = 0;
-            ger_Silicon_LR_trigger_time_channel = 0;
-            exit(0);
-        }
-#endif
-
-    } catch(Tfile_helper_exception &m) {
-        cout << "Error while reading the file " << fname << "\n\t"
-             << m.message << endl;
-        throw;
-    }
-#endif
-
-}
 //****************************************************************************************
-/** No descriptions */
-bool TIFJEventProcessor::unpack_munich_sam3_subevent_from_raw_array(
-        const_daq_word_t *data, int how_many_words)
-{
-    //   cout << " F.unpack_munich_sam3_subevent_from_raw_array" << endl;
-
-    // return true;
-#if(CURRENT_EXPERIMENT_TYPE==RISING_ACTIVE_STOPPER_APRIL_2008)\
-    || (CURRENT_EXPERIMENT_TYPE == RISING_ACTIVE_STOPPER_JULY_2008)
-
-    //   cout << "To unpack there is " << dec << how_many_words << " words \n";
-    //   for(int i = 0 ; i < how_many_words ; i++)
-    //   {
-    //     cout << "[" << i << "]  0x" << hex <<  data[i]
-    //     << ",  dec = " <<  dec <<  data[i] << endl;
-    //   }
-
-
-    /* Plamen wants this.
-     According to the list, the word nmr 3 has 1Hz clock, so by its change we write the report on the disk.
-     */
-    static unsigned long last_1Hz_clock;
-
-    if(data[3] != last_1Hz_clock) {
-        last_1Hz_clock = data[3];
-        ofstream plik("scalers_current_report.txt");
-        for(int i = 0; i < how_many_words; i++) {
-            plik
-                    // << "[" << i << "]     "
-                    << data[i] << endl;
-        }
-        plik.close();
-
-    }
-
-    /*
-     if(word.header_word.geo == 10)  // was 10 for tin100 ???????????????????????????
-     {
-
-     target_event->scaler_free_trigger       = data[i+1]; // 1. Free (trigger box)
-     target_event->scaler_accepted_trigger  = data[i+2];// 2. Active (last voie)
-     target_event->scaler_spill_counter  = data[i+3];// 3. Spill counter
-     target_event->scaler_100Hz_clock  = data[i+4]; // 4. 100 Hz free
-     target_event->scaler_10Hz_clock = data[i+5]; // 5. 10 Hz free
-     target_event->scaler_sc01 = data[i+6];  // 6. sc0
-     target_event->scaler_sc42_left = data[i+7];// 7. sc42L
-     target_event->scaler_sc21_right = data[i+8]; // 8. sc21T
-     target_event->scaler_sc41_right = data[i+9]; // 9. sc41T
-     target_event->scaler_seetram_old_dig = data[i+10]; // 10. seetram old digit
-     target_event->scaler_seetram_new_dig = data[i+11];// 11. seetram new digit
-     target_event->scaler_100_Hz_dead_time_veto = data[i+12];// 12. 100 Hz dead time veto
-     target_event->scaler_start_extraction  = data[i+13]; // 13. Start extraction
-     target_event->scaler_stop_extraction = data[i+14]; // 14. Stop extraction
-     target_event->scaler_pile_up_beam_in_GFLT  = data[i+15];// 15. Pille up beam in GFLT
-     target_event->scaler_pile_up_decay_in_GFLT  = data[i+16];   // 16. Pille up decay in GFLT
-     target_event->scaler_implant_free  = data[i+17]; // 17. Implant free
-     target_event->scaler_decay_free = data[i+18];// 18. Decay free
-     target_event->scaler_implant_accepted  = data[i+19];// 19. Implant accepted
-     target_event->scaler_decay_accepted  = data[i+20];// 20. Decay accepted
-
-     // we jump over them in the outer loop, they are processed
-     i += word.header_word.cnt;
-     }
-
-     */
-
-#elif CURRENT_EXPERIMENT_TYPE==RISING_ACTIVE_STOPPER_100TIN\
-
-    //#ifdef TRACKING_IONISATION_CHAMBER_X
-
-
-#define SPEAK_MUNICH 0
-#define DBGM  if(SPEAK_MUNICH)
-
-    DBGM cout << "To unpack unpack_munich_sam3_subevent_from_raw_array " << endl;
-
-    DBGM {
-        cout << "To unpack there is " << dec << how_many_words << " words \n";
-        for(int i = 0; i < how_many_words; i++) {
-            cout << "[" << i << "]  0x" << hex << data[i]
-                 << ",  dec = " << dec << data[i] << endl;
-        }
-    }
-
-    // find the "start word"
-    const uint sim_start_word = ('T' << 24) + ('I' << 16) + ('C' << 8) + 'A';      // TICA = TIC Anfang
-    const uint sim_stop_word = ('T' << 24) + ('I' << 16) + ('C' << 8) + 'E';      // TICE = TIC Ende
-
-    DBGM cout << "start word is: " << hex << data[0] << dec << endl;
-
-    if(data[0] != sim_start_word) {  // TICAnfang 4655434b)
-        //DBGM
-        cout << " !!!! ERROR: SIM3 munich subevent has a wrong start_word, skipping subevent " << endl;
-        return true; // true, bec other subevent can be valid
-    }
-    // check if the last word is the "end word"  ??????????
-    if(how_many_words == 2 && data[1] == sim_stop_word) {  // "TICE" - end
-        static int counter;
-        if(!(++counter % 500)) {
-            cout << "Warning: so far there are " << counter
-                 << " empty  SIM3 munich subevents," << endl;
-        }
-        return true; // true, bec other subevent can be valid
-    }
-
-    // take DSP_HEADER
-    struct dsp_header {
-        uint length :
-            16; //  - Length event length excluding marking words
-        uint trigger_counter :
-            8;
-        uint dsp_numer :
-            8; //   - it contains dsp numer DSP
-    };
-    union {
-        daq_word_t raw_data;
-        dsp_header dh;
-    };
-
-    raw_data = data[1];
-
-    DBGM cout << "dsp header contains ----> "
-              << "dsp nr = 0x" << hex << dh.dsp_numer
-              << ", trigg counter  = 0x" << hex << dh.trigger_counter
-              << ", length (exclu marking words) = " << dec << dh.length
-              << endl;
-
-    // for loop over two modules, or untill the end word
-
-
-    struct subevent_header {
-        // additional_header_word
-        uint length :
-            8; //  - Length event length excluding marking words
-        uint reserved :
-            4; // to ignore
-        uint devcode :
-            4; // must be 0xa for GASSIPLEX boards
-
-        // real subevent header
-        uint bb_trigger_counter :
-            8; //16;//  - Length event length excluding marking words
-        uint ts :
-            2; // 0 illega, 1 physics, 2 n/a, 3 = pedestal
-        uint error :
-            1;
-        uint board :
-            4; // board nr = GTB address of BB
-        uint data_flag:
-            1;
-    };
-
-    union {
-        daq_word_t raw_data_seh;
-        subevent_header seh;
-    };
-
-    int word = 2;
-    // raw_data_seh = data[1];
-
-    for(int module = 0; module < 2; module++) {  // module means another TIC device
-        // take SEH subevent header
-        raw_data_seh = data[word++];
-
-        if(raw_data_seh == sim_stop_word
-                ||
-                data[word] == sim_stop_word) { // this is already the next word
-            //       int m = 66;
-            //     m = m+6;
-            break;
-        }
-
-        DBGM cout << "subevent header contains ----> "
-                  << "data_flag = 0x" << hex << seh.data_flag
-                  << ", board = 0x" << hex << seh.board
-                  << ", error = 0x" << hex << seh.error
-                  << ", ts = 0x" << hex << seh.ts
-                  << ", bb_trigger_counter = " << dec << seh.bb_trigger_counter
-                  << endl;
-
-        if(seh.data_flag == 0)
-            continue; // no data for this module was sent (empty)
-        // so the additional header word is also empty, this is why we just make the contine
-
-
-        //  raw_data_ahw = data[word++];
-
-        DBGM cout << "additional_header_word contains ----> "
-                  << "devcode = 0x" << hex << seh.devcode
-                  << ", length = " << dec << seh.length
-                  << "+ 1 !!!"
-                  << endl;
-
-        if(seh.devcode != 0xa) {  // devcode should alway be 0xa  for real data (seh.data_flag is 1 )
-            // DBGM
-            cout << " Wrong structure of  'munich subevent'. "
-                    " (The subeven devcode (seh.devcode) is not 0xa !, while seh.data_flag is true), ignoring this  subevent " << endl;
-            //continue;
-            return true; // false; otherwise all other subevent (frs  etc are discarded)
-        }
-
-        // +1 below is according the the description given to me by Michael
-        // now we are analysing the short words
-
-        //  unsigned short int *ptr = static_cast<unsigned short int *>(&data[word]);
-        unsigned short int *ptr = (unsigned short int *)(&data[word]);
-
-        uint d = 0;
-        for(d = 0; d < seh.length + 1; d++, ptr++) {
-            struct channel_bits_for_reordering {
-                uint :
-                8 + 4;
-                uint two_bits :
-                    2;
-            };
-            struct dane {
-                uint value :
-                    8;
-                uint channel :
-                    8;
-            };
-            union {
-                uint dana_raw;
-                dane ds;
-                channel_bits_for_reordering reorder;
-            };
-
-            dana_raw = *ptr;
-            // the channel have to be "translated"
-            int orig_chann = ds.channel;
-
-            //     cout << "BEFORE REORDER Data nr " << d << ") 0x"
-            //       << hex << dana_raw << dec
-            //       << ",      value = 0x" << ds.value
-            //       << ", value dec = " << dec << ds.value
-            //       << " for module = " << module
-            //       << ", channel = " << ds.channel
-            //       << ", orig_chann= " <<orig_chann
-            //       << endl;
-
-
-            int re = reorder.two_bits;
-
-            switch(re) {
-            case 2 :
-                re = 0;
-                break;
-            case 3 :
-                re = 1;
-                break;
-            case 1 :
-                re = 2;
-                break;
-            case 0 :
-                re = 3;
-                break;
-            }
-            reorder.two_bits = re;
-
-            DBGM cout << "AFTER REORDER Data nr " << d << ") 0x"
-                      << hex << dana_raw << dec
-                      << ",      value = 0x" << ds.value
-                      << ", value dec = " << dec << ds.value
-                      << " for module = " << module
-                      << ", reordered channel = " << ds.channel
-                      << ", original channel= " << orig_chann
-                      << endl;
-
-            //Michael reordering the wires
-            int true_channel = ds.channel;
-            if(ds.channel > 223)
-                true_channel = (255 - ds.channel) + 224;
-
-            if(ds.value) {  // i.e. non zero
-                switch(module) {
-                case 0 :
-                    target_event->tic21_data[true_channel] = ds.value;
-                    target_event->tic21_fired = true;
-                    break;
-                case 1 :
-                    target_event->tic22_data[true_channel] = ds.value;
-                    target_event->tic22_fired = true;
-                    break;
-                }
-
-            }
-        }// end for dane
-        DBGM cout << "There was " << d << "data words " << endl;
-        if(d % 2)
-            d++;
-
-        int how_much_to_skip = d / 2;
-        DBGM cout << "so we need to skip longwords " << how_much_to_skip << endl;
-        word += how_much_to_skip;
-
-    } // end for modules
-    DBGM cout << "here should be the stop word " << hex << data[word] << dec << endl;
-
-#endif
-
-    return true; // if successful
-}
 //****************************************************************************************
-/** No descriptions */
-int TIFJEventProcessor::decode_munich_absorber_data(const daq_word_t *data,
-                                                    const uint sim_stop_word)
-// unpack_munich_sam3_subevent_from_raw_array(const_daq_word_t *data,int how_many_words)
-{
-#ifdef POSITRON_ABSORBER_PRESENT
-
-    //cout << " F.unpack_munich_sam3_subevent_from_raw_array======================" << endl;
-
-
-#define DBGA  if(0)
-
-    DBGA cout << "decode_munich_absorber_data " << endl;
-
-    //   DBGA
-    //   {
-    //     cout << "To unpack there is " << dec << how_many_words << " words \n";
-    //     for(int i = 0 ; i < how_many_words ; i++)
-    //   {
-    //     cout << "[" << i << "]  0x" << hex <<  data[i]
-    //       << ",  dec = " <<  dec <<  data[i] << endl;
-    //     }
-    //   }
-
-    // find the "start word"
-    DBGA cout << "start word is: " << hex << data[0] << dec << endl;
-
-    //   if(data[0] != 0x4655434b)
-    //   {
-    //     DBGA cout << " !!!! No start word, skipping subevent " << endl;
-    //     // return false;
-    //   }
-
-    // check if the last word is the "end word"  ??????????
-    if(data[1] == sim_stop_word) {
-        DBGA cout << " !!!! Empty contents" << endl;
-        return 1; // skip one word ("end word);
-    }
-    // take DSP_HEADER
-    struct dsp_header {
-        uint length :
-            16; //  - Length event length excluding marking words
-        uint trigger_counter :
-            8;
-        uint dsp_numer :
-            8; //   - it contains dsp numer DSP
-    };
-    union {
-        daq_word_t raw_data;
-        dsp_header dh;
-    };
-
-    raw_data = data[1];
-
-    DBGA cout << "dsp header contains ----> "
-              << "dsp nr = 0x" << hex << dh.dsp_numer
-              << ", trigg counter  = 0x" << hex << dh.trigger_counter
-              << ", length (exclu marking words) = " << dec << dh.length
-              << endl;
-
-    // for loop over two modules, or untill the end word
-
-
-    struct subevent_header {
-        // additional_header_word
-        uint length :
-            8; //  - Length event length excluding marking words
-        uint reserved :
-            4; // to ignore
-        uint devcode :
-            4; // must be 0xa for GASSIPLEX boards
-
-        // real subevent header
-        uint bb_trigger_counter :
-            8;//  - Length event length excluding marking words
-        uint ts :
-            2; // 0 illega, 1 physics, 2 n/a, 3 = pedestal
-        uint error :
-            1;
-        uint board :
-            4; // board nr = GTB address of BB
-        uint data_flag:
-            1;
-    };
-
-    union {
-        daq_word_t raw_data_seh;
-        subevent_header seh;
-    };
-
-    int word = 2;
-    // raw_data_seh = data[1];
-
-    for(int module = 0; module < 2; module++) {  // module means another TIC device
-        // take SEH subevent header
-        raw_data_seh = data[word++];
-        // check if the last word is the "end word"  ??????????
-        if(raw_data_seh == sim_stop_word) {
-            DBGA cout << " !!!! No data for module " << module << endl;
-            return word - 1; // skip words ("end word);
-        }
-        DBGA cout << "-----------Module nr " << module << endl;
-
-        DBGA cout << "subevent header " << hex << raw_data_seh << "  contains ----> "
-                  << "data_flag = 0x" << hex << seh.data_flag
-                  << ", board = 0x" << hex << seh.board
-                  << ", error = 0x" << hex << seh.error
-                  << ", ts = 0x" << hex << seh.ts
-                  << ", bb_trigger_counter = " << dec << seh.bb_trigger_counter
-                  << endl;
-
-        //  raw_data_ahw = data[word++];
-
-        if(seh.data_flag == 0) {
-            DBGA cout << "Data flag == 0, so skipping " << endl;
-            continue; // empty module
-        }
-        DBGA cout << "additional_header_word contains ----> "
-                  << "devcode = 0x" << hex << seh.devcode
-                  << ", length = " << dec << seh.length
-                  << "+ 1 !!!"
-                  << endl;
-
-        if(seh.devcode != 0xa) {
-            DBGA cout << " The seh.devcode is not 0xa, skipping subevent " << endl;
-            return false;
-        }
-
-        // +1 below is according the the decrition given to me by Michael
-        // now we are analysing the short words
-
-        //  unsigned short int *ptr = static_cast<unsigned short int *>(&data[word]);
-        unsigned short int *ptr = (unsigned short int *)(&data[word]);
-
-        uint d = 0;
-        for(d = 0; d < seh.length + 1; d++, ptr++) {
-            struct channel_bits_for_reordering {
-                uint :
-                8 + 4;
-                uint two_bits :
-                    2;
-            };
-            struct dane {
-                uint value :
-                    8;
-                uint channel :
-                    8;
-            };
-            union {
-                uint dana_raw;
-                dane ds;
-                channel_bits_for_reordering reorder;
-            };
-
-            dana_raw = *ptr;
-            // the channel have to be "translated"
-
-            //int orig_chann = ds.channel ;
-
-            //     cout << "BEFORE REORDER Data nr " << d << ") 0x"
-            //       << hex << dana_raw << dec
-            //       << ",      value = 0x" << ds.value
-            //       << ", value dec = " << dec << ds.value
-            //       << " for module = " << module
-            //       << ", channel = " << ds.channel
-            //       << ", orig_chann= " <<orig_chann
-            //       << endl;
-
-
-            int re = reorder.two_bits;
-
-            switch(re) {
-            case 2 :
-                re = 0;
-                break;
-            case 3 :
-                re = 1;
-                break;
-            case 1 :
-                re = 2;
-                break;
-            case 0 :
-                re = 3;
-                break;
-            }
-            reorder.two_bits = re;
-
-            DBGA
-                    cout << "Data nr " << d << ") 0x"
-                         << hex << dana_raw
-                         << ",      value = 0x" << hex << ds.value
-                         << ", (dec = " << dec << ds.value
-                         << ") for module = " << module
-                         << ", reordered channel = " << ds.channel
-                            //<< ", original channel= " <<orig_chann
-                         << ", brigde board address = " << seh.board
-                         << endl;
-
-            int front_or_rear = 0, x_y_plate = 0, stripe = 0;
-
-            // if(ds.value) // i.e. non zero
-            {
-                switch(seh.board) {
-                case 0: // this board gives data for the absorber
-
-                    if(lookup_absorber_2_9.current_combination(
-                                seh.board,
-                                ds.channel,
-                                &front_or_rear, &x_y_plate, & stripe)) {
-
-                        DBGA
-                                cout << " --- this is for front absorber  "
-                                     << " Front_or_Rear = " << front_or_rear
-                                     << ", plate= " << x_y_plate
-                                     << ", stripe= " << stripe
-                                     << ", data = " << ds.value
-                                        //<< flush  ;  //
-                                     << endl;
-
-                        switch(front_or_rear) {
-                        case 0:
-                            target_event->positron_absorber_front[x_y_plate][stripe] = ds.value;
-                            target_event->positron_absorber_front_fired[x_y_plate] = true;
-                            break;
-
-                        case 1:
-                            target_event->positron_absorber_rear[x_y_plate][stripe] = ds.value;
-                            target_event->positron_absorber_rear_fired[x_y_plate] = true;
-                            break;
-                        }
-
-                    } else {
-                        /*
-                         cout
-                         << "!!!! In the lookup table for absobrers there is no combination:  "
-                         << " Module = " << module << ", Board ="
-                         << seh.board << " Channel = " << ds.channel
-                         << endl;
-                         */
-                    }
-                    break;
-
-                case 1: { // bridge board addres 0x1
-                    int egzempl = 0;
-                    x_y_plate = 0 , stripe = 0;
-                    if(lookup_active_stopper_x.current_combination(
-                                seh.board,
-                                ds.channel,
-                                &egzempl, &x_y_plate, & stripe)) {
-
-                        DBGA
-                                cout << " --- this is for lookup_active_stopper_x   "
-                                     << "[Board= " << seh.board
-                                     << ", channel= " << ds.channel
-                                     << "] ==> Front_or_Rear = " << front_or_rear
-                                     << ", plate= " << x_y_plate
-                                     << ", stripe= " << stripe
-                                     << ", data = " << ds.value
-                                        //<< flush  ;  //
-                                     << endl;
-
-                        target_event->munich_active_stopper
-                                [egzempl]
-                                [(x_y_plate * NR_OF_MUN_STOPPER_STRIPES_X) + stripe] = ds.value;
-
-                        target_event->munich_active_stopper_fired[egzempl][x_y_plate] = true;
-
-                        break;
-
-                    } // if lookup
-                    else {
-                        /*       cout
-                         << "!!!! In the lookup table lookup_active_stopper_x    there is no combination:  "
-                         << " Module = " << module << ", Board ="
-                         << seh.board << " Channel = " << ds.channel
-                         << endl;
-                         */
-                    }
-                } // local
-
-                    break;
-                } // end if switch(board )
-
-            } // if nonzero data
-        }// end for data
-
-        DBGA cout << "There was " << d << "data words " << endl;
-        if(d % 2)
-            d++;
-
-        int how_much_to_skip = d / 2;
-        DBGA cout << "so we need to skip longwords " << how_much_to_skip << endl;
-        word += how_much_to_skip;
-
-    } // end for modules
-    DBGA cout << "here should be the stop word " << hex << data[word] << dec << endl;
-    return word - 1; // if successful
-
-#else
-
-    return 0; // if successful
-#endif
-
-}
 //****************************************************************************************
-void TIFJEventProcessor::read_munich_lookup()
-{
-#ifdef MUN_ACTIVE_STOPPER_PRESENT
-
-    // as there can be different nr of strinps for X and different for Y
-    // here we make a trick. At first we read the lookup table for X only,
-    // with the certain number of X stripes.
-
-    // Later we do it once more, but skipping already read X items,
-    // now with Y giving the right (different) nr of Y stripes
-
-    // At first we read the X data - which comes from DSP Board
-
-    vector<string> chain_one;
-    for(unsigned int i = 0; i < NR_OF_MUN_STOPPER_MODULES; i++) {  // <-- so many of them
-        chain_one.push_back(string("stopper") + char('A' + i) + "_");
-    }
-
-    vector<string> chain_two;
-    chain_two.push_back("x_");    // only X strips <---
-
-    vector<string> chain_three;
-    for(unsigned int i = 0; i < NR_OF_MUN_STOPPER_STRIPES_X; i++) {  // <-- so many of them
-        ostringstream s;
-        s << setw(2) << setfill('0') << i << "_energy";
-        chain_three.push_back(s.str());
-    }
-
-    //   cout << "Trying to read  " << "./mbs_settings/stopper_lookup_table.txt" << endl;
-
-    lookup_active_stopper_x.read_from_disk("./mbs_settings/tin100_lookup_table.txt",
-                                           chain_one, chain_two, chain_three, false);
-
-    // Y stripes come from different electronics, so it is better to have
-    // the different lookup table !!!!!!!!!!!
-
-
-    chain_two.clear();
-    chain_two.push_back("y_");
-
-    chain_three.clear();
-
-    for(unsigned int i = 0; i < NR_OF_MUN_STOPPER_STRIPES_Y; i++) {
-        ostringstream s;
-        s << setw(2) << setfill('0') << i << "_energy";
-        chain_three.push_back(s.str());
-    }
-
-    lookup_active_stopper_y.read_from_disk("./mbs_settings/tin100_lookup_table.txt",
-                                           chain_one, chain_two, chain_three, false);
-
-    //=========== To neglect the noise =============
-
-    fake_lookup_noise_to_neglect.clear();
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (5, 15));
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (5, 31));
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (7, 15));
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (7, 31));
-
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (9, 1));
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (9, 3));
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (9, 5));
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (9, 7));
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (9, 8));
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (9, 10));
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (9, 12));
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (9, 14));
-    for(int i = 16; i < 32; i++)
-        fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (9, i));
-
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (13, 14));
-    fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (13, 15));
-    for(int i = 30; i < 32; i++)
-        fake_lookup_noise_to_neglect.push_back(pair<uint, uint> (13, i));
-
-    //===============================
-    //  lookup_multiplicity_module
-    chain_one.clear();
-    chain_one.push_back(string("munich_multiplicity_module"));
-    chain_two.clear();
-    chain_two.push_back("_first_channel");    // we ask only for channel 0, the next are 1:1
-    //   for(unsigned int i = 0 ; i < 1 ; i++)
-    //   {
-    //     ostringstream s ;
-    //     s << "_channel_" << setw(2) << setfill('0') << i ;
-    //     chain_two.push_back(s.str()) ;
-    //   }
-    chain_three.clear();
-    chain_three.push_back("_starts");
-    lookup_multiplicity_module.read_from_disk("./mbs_settings/tin100_lookup_table.txt",
-                                              chain_one, chain_two, chain_three, false);
-
-#endif
-
-}
 //****************************************************************************************
-bool TIFJEventProcessor::unpack_munich_timing_module_subevent(
-        const daq_word_t *long_data, int how_many_words)
-{
-#if (CURRENT_EXPERIMENT_TYPE == RISING_ACTIVE_STOPPER_100TIN ) \
-    || (CURRENT_EXPERIMENT_TYPE == RISING_ACTIVE_STOPPER_APRIL_2008 )
-
-    // Henning says that here there are 4 Caen V775 TDCs (range 1.2 us)
-    // and the old_long range CAEN TDC V767 - which has 128 channels in one card
-#undef SPEAK_TIMING
-
-#define SPEAK_TIMING 0
-#define DBGT  if(SPEAK_TIMING)
-
-    DBGT {
-        cout << "To unpack there are:  " << how_many_words << " words \n";
-
-        for(int i = 0; i < how_many_words; i++) {
-            cout << "[" << i << "]  0x" << hex << long_data[i]
-                    //       << ",  dec = "
-                 << dec
-                    //       <<  long_data[i]
-                 << endl;
-        }
-    }
-
-    /* is i header
-     /////////////////////////////////////////
-     class vme767_header_word
-     {
-     public:
-     unsigned int evnet_nr: 12;
-     unsigned int         : 9;
-     //unsigned int header  : 1;
-     unsigned int code    : 2;
-     unsigned int         : 4;
-     unsigned int geo     : 5 ;
-     };
-     /////////////////////////////////////////
-     class vme767_data_word
-     {
-     public:
-     unsigned int time_data  : 20;
-     unsigned int edge       : 1;
-     // unsigned int eob        : 1;
-     // unsigned int header     : 1;
-     unsigned int code    : 2;
-     unsigned int start      : 1;
-     unsigned int channel    : 7;
-     };
-     /////////////////////////////////////////
-     class vme767_eob_word
-     {
-     public:
-     unsigned int ev_counter   : 16 ;
-     unsigned int  : 5 ;
-     // unsigned int eob        : 1;
-     // unsigned int header     : 1;
-     unsigned int code    : 2;
-     unsigned int  : 1 ;
-     unsigned int status : 3 ;
-     unsigned int geo     : 5 ;
-     };
-     /////////////////////////////////////////
-     /////////////////////////////////////////
-     union vme767_word
-     {
-     daq_word_t           raw_word ;
-     vme767_header_word      header_word ;
-     vme767_data_word        data_word ;
-     vme767_eob_word         end_of_block_word ;
-     };
-
-     union general_vme_word
-     {
-     vme767_word word767;
-     vme_word    word775;
-     };
-
-     --------------------*/
-
-    // at first there are VME 775 VME data ########################
-    // loop over unknown nr of words
-
-    general_vme_word word;
-
-    int counter775modules = 0;
-    // zero was used, now we start from 1
-    unsigned int current_geo = 0;
-
-    enum typ_of_block {typ_vme775, typ_vme767};
-    typ_of_block current_vme_blok = typ_vme775;
-
-    /*
-     // Trap, for debugging purposes
-     if(how_many_words != 3 ||
-     long_data[0] != 0x6000000
-     || long_data[1] != 0x600000
-     || long_data[2] != 0x600000
-     )
-     {
-     cout
-     << "There is more data, than just 3"
-     << endl;
-     }
-     */
-
-    for(int i = 0; i < how_many_words; i++) {
-        DBGT cout << "Unpacking word " << i << ": 0x"
-                  << hex << long_data[i] << dec << endl;
-        word.word775.raw_word = long_data[i];
-        if(!word.word775.raw_word) {  // do not analyse empty words
-            continue;
-        }
-
-        // Sometimes Henning is sending the extra word on the end of the VME block
-        // with the pattern 0xbabe****
-        if((word.word775.raw_word & 0xffff0000) == 0xbabe0000) {
-            DBGT cout << "babe word ==============" << endl;
-            break; // end of data at all, so end of the loop
-        }
-
-        // at first there will be information from the 0NE  775 block
-        // and then information from ONE  767
-
-        if(counter775modules >= 1)
-            current_vme_blok = typ_vme767;
-
-        switch(current_vme_blok) {
-        case typ_vme775: //-----------------------------------------------------------------
-            // Sometimes Henning is sending the extra word on the end of the VME block
-            // with the pattern 0xbabe****
-
-            switch(word.word775.header_word.code) {  // <-- it is common to all of types of vme words
-            case 2: {
-                DBGT cout << "Caen V775 TDC Header .." << endl;
-            }
-                DBGT cout << "babe word ==============" << endl;
-                break;
-
-            case 0:
-                // sizes are hardcoded in the class definition
-                if(word.word775.data_word.geo < 22 && word.word775.data_word.channel < 32) {
-                    DBGT cout << "Arrived TIME geo = " << word.word775.data_word.geo
-                              << ", chan = " << word.word775.data_word.channel
-                              << ", data = " << word.word775.data_word.data
-                              << endl;
-
-                    // Stephan says that it must be GEO = 20
-                    if(word.word775.data_word.geo == 20) {
-                        // storing the time data
-                        // no need to we reduce the  resolution from 64 KB to 8KB !!!
-                        target_event->munich_timer775[word.word775.data_word.channel ] =
-                                word.word775.data_word.data;
-                    }
-
-                }
-                break;
-
-            case 4:
-                DBGT cout << "Footer  when i = .." << i << endl;
-                counter775modules++;
-                break;
-
-            case 6:
-                DBGT cout << "'Not valid datum for this TDC when i = .." << i
-                          << " vme module nr " << counter775modules << " didn't fired " << endl;
-                counter775modules++;
-                break;
-
-            default :
-                DBGT cout << "Error - unknown code in VME time information  when i = .." << i << endl;
-                break;
-            } // endof inner switch
-
-            break;
-
-            // ########################################################################
-        case typ_vme767: //---------------------------------------------------------------------
-
-            switch(word.word767.header_word.code) {  // <-- it is common to all of types of vme words
-
-            case 2: {
-                DBGT cout << "Caen TDC V767 Header ------------------------" << endl;
-                current_geo = word.word767.header_word.geo;
-            }
-                break;
-
-            case 0:
-                // sizes are hardcoded in the class definition
-                if(current_geo == 21 && word.word767.data_word.channel < 128) {
-
-                    DBGT cout << "Arrived TIME geo = " << current_geo
-                              << ", chan = " << word.word767.data_word.channel
-                              << ", data = " << word.word767.data_word.time_data
-                              << endl;
-
-                    target_event->munich_timer767 [word.word767.data_word.channel] =
-                            word.word767.data_word.time_data;
-
-                } else {
-                    cout << "F. unpack_munich_timing_module_subevent(). Unknown GEO = "
-                         << current_geo << " arrived for V767" << endl;
-                }
-                break;
-
-            case 1:
-                DBGT cout << "Footer  when i = .." << i << endl;
-            {
-                // local scope
-                static int how_many_errors;
-                if(word.word767.end_of_block_word.status) {
-                    how_many_errors++;
-                    if(flag_accept_single_ger && flag_accept_single_dgf) {
-                        static time_t last_message = time(NULL);
-                        if((time(NULL) - last_message > 5) && (how_many_errors > 500)) {         // every 5 seconds
-                            last_message = time(NULL);
-                            cout << "Error status in Caen 767 block (which deliveres LR time). Please reset it"
-                                 << endl;
-
-                            //cout << "This is sorting online " << endl;
-
-                            ofstream plik("./commands/synchronisation_lost.txt");
-                            plik
-                                    << "Long Range TDC status Watchdog barks !\n"
-                                    << "The Status bitfield in NON ZERO.\n  "
-                                    << "\nNote: - If you do not care about this (for example you are interested only in FRS)\n"
-                                       "Please go:\n"
-                                       "Spy_options->Matching of MBS subevent->Modify above parameters (wizard)->5 branches [next]->\n"
-                                       "->Do not make matching [next]-> here please uncheck the fields 'GER' and 'DGF',\n"
-                                       "Then finish the wizard (and update spy if it is running)"
-                                    << endl;
-                            plik.close();
-
-                        } // every 5 seconds
-                        DBGT cout << "end of unpacking the subevent ==============" << endl;
-                        return false;
-                    }
-
-                } else { // no error in status
-                    how_many_errors = 0;
-                }
-            } // locaal
-                break;
-            case 3:
-                DBGT cout << " 'Not valid datum for this TDC when i = .." << i << endl;
-                break;
-
-            default :
-                DBGT cout << "no Code,  i = .." << i << endl;
-                break;
-            }
-
-            break;
-
-        }// end of  switch(current_vme_blok)
-
-    } // end of for i
-    DBGT cout << "end of unpacking the subevent ==============" << endl;
-#endif
-
-    return true;
-
-}
 //****************************************************************************************
 /** No descriptions */
 bool TIFJEventProcessor::unpack_multi_hit_tdc_v1290_from_raw_array(
@@ -7269,430 +5687,8 @@ bool TIFJEventProcessor::unpack_multi_hit_tdc_v1290_from_raw_array(
     return true; // if successful
 }
 
-#if  (CURRENT_EXPERIMENT_TYPE == RISING_ACTIVE_STOPPER_JULY_2008)
 //****************************************************************************************
-bool TIFJEventProcessor::unpack_procid45_v767_and_775(
-        const daq_word_t *long_data,
-        int how_many_words)
-{
 
-    // Henning says that here there are 4 Caen V775 TDCs (range 1.2 us)
-    // and the old_long range CAEN TDC V767 - which has 128 channels in one card
-#undef SPEAK_TIMING
-
-#define SPEAK_TIMING 0
-#define DBGT  if(SPEAK_TIMING)
-
-    DBGT {
-        cout << "To unpack there are:  " << how_many_words << " words \n";
-        for(int i = 0; i < how_many_words; i++) {
-            cout << "[" << i << "]  0x" << hex << long_data[i]
-                    //       << ",  dec = "
-                 << dec
-                    //       <<  long_data[i]
-                 << endl;
-        }
-    }
-
-    /* is i header
-     /////////////////////////////////////////
-     class vme767_header_word
-     {
-     public:
-     unsigned int evnet_nr: 12;
-     unsigned int         : 9;
-     //unsigned int header  : 1;
-     unsigned int code    : 2;
-     unsigned int         : 4;
-     unsigned int geo     : 5 ;
-     };
-     /////////////////////////////////////////
-     class vme767_data_word
-     {
-     public:
-     unsigned int time_data  : 20;
-     unsigned int edge       : 1;
-     // unsigned int eob        : 1;
-     // unsigned int header     : 1;
-     unsigned int code    : 2;
-     unsigned int start      : 1;
-     unsigned int channel    : 7;
-     };
-     /////////////////////////////////////////
-     class vme767_eob_word
-     {
-     public:
-     unsigned int ev_counter   : 16 ;
-     unsigned int  : 5 ;
-     // unsigned int eob        : 1;
-     // unsigned int header     : 1;
-     unsigned int code    : 2;
-     unsigned int  : 1 ;
-     unsigned int status : 3 ;
-     unsigned int geo     : 5 ;
-     };
-     /////////////////////////////////////////
-     /////////////////////////////////////////
-     union vme767_word
-     {
-     daq_word_t           raw_word ;
-     vme767_header_word      header_word ;
-     vme767_data_word        data_word ;
-     vme767_eob_word         end_of_block_word ;
-     };
-
-     union general_vme_word
-     {
-     vme767_word word767;
-     vme_word    word775;
-     };
-
-     --------------------*/
-
-    // at first there are VME 775 VME data ########################
-    // loop over unknown nr of words
-
-    general_vme_word word;
-
-    //int counter775modules = 0;
-    // zero was used, now we start from 1
-    unsigned int current_geo = 0;
-
-    //  enum  typ_of_block  { unknown, typ_vme775, typ_vme767 };
-    //  typ_of_block        current_vme_blok = typ_vme775;
-
-    /*
-     // Trap, for debugging purposes
-     if(how_many_words != 3 ||
-     long_data[0] != 0x6000000
-     || long_data[1] != 0x600000
-     || long_data[2] != 0x600000
-     )
-     {
-     cout
-     << "There is more data, than just 3"
-     << endl;
-     }
-     */
-
-    enum enum_what_type_of_block {unknown, typ_vme767, typ_vme775} current_vme_blok;
-    current_vme_blok = unknown;
-
-    for(int i = 0; i < how_many_words; i++) {
-        DBGT cout << "Unpacking word " << i << ": 0x"
-                  << hex << long_data[i] << dec << endl;
-
-        word.word775.raw_word = long_data[i];
-        if(!word.word775.raw_word) {  // do not analyse empty words
-            continue;
-        }
-
-        // Sometimes Henning is sending the extra word on the end of the VME block
-        // with the pattern 0xbabe****
-        if((word.word775.raw_word & 0xffff0000) == 0xbabe0000) {
-            DBGT cout << "babe word ==============" << endl;
-            break; // end of data at all, so end of the loop
-        }
-
-        // at first there will be information from the 0NE  775 block
-        // and then information from ONE  767
-
-        if(current_vme_blok == unknown) {
-
-            // try to recognize the block by looking at the header code
-            if(word.word775.header_word.code == 2) {  // <-- it is common to all of types of vme words
-                current_vme_blok = typ_vme775;
-            } else if(word.word767.header_word.code == 2) {
-                current_vme_blok = typ_vme767;
-            } else
-                continue; // ???
-        }
-
-        switch(current_vme_blok) {
-        case unknown:
-        default :
-            continue; // because unk
-
-        case typ_vme775: //-----------------------------------------------------------------
-            // Sometimes Henning is sending the extra word on the end of the VME block
-            // with the pattern 0xbabe****
-
-            switch(word.word775.header_word.code) {  // <-- it is common to all of types of vme words
-            case 2:
-
-                DBGT cout << "Caen V775 TDC Header .., geo = " << word.word775.header_word.geo << endl;
-                break;
-
-            case 0:
-                // sizes are hardcoded in the class definition
-                //        if(word.word775.data_word.geo < 22  &&word.word775.data_word.channel < 32)
-            {
-                DBGT cout << "Arrived V775 TIME geo = " << word.word775.data_word.geo
-                          << ", chan = " << word.word775.data_word.channel
-                          << ", data = " << word.word775.data_word.data
-                          << endl;
-
-                int module = 0;
-                int x_y_plate = 0;
-                int stripe = 0;
-#ifdef ACTIVE_STOPPER_PRESENT
-                // STOPPER A ==========================
-                if(lookup_active_stopper_time.current_combination(
-                            word.word775.data_word.geo,
-                            word.word775.data_word.channel,
-                            &module, &x_y_plate, & stripe)) {
-                    DBGT
-                            cout << " --- this is TIME information for stopper "
-                                 << " det = " << module
-                                 << ", x_y_plate= " << x_y_plate
-                                 << ", stripe= " << stripe
-                                 << ", data = " << word.word775.data_word.data
-                                    //<< flush  ;  //
-                                 << endl;
-
-                    //#ifdef NIGDY
-                    // storing the time data
-                    target_event->active_stopper_time[module]
-                            [(x_y_plate * NR_OF_STOPPER_STRIPES_X) + stripe] =
-                            word.word775.data_word.data;
-                    target_event->active_stopper_fired[module][x_y_plate] = true;
-                    //#endif
-                } else
-#endif
-#ifdef ACTIVE_STOPPER2_PRESENT
-                    if(lookup_active_stopper2_time.current_combination(
-                                word.word775.data_word.geo,
-                                word.word775.data_word.channel,
-                                &module, &x_y_plate, & stripe)) {
-                        DBGT
-                                cout << " --- this is TIME information for stopper2 "
-                                     << " det = " << module
-                                     << ", x_y_plate= " << x_y_plate
-                                     << ", stripe= " << stripe
-                                     << ", data = " << word.word775.data_word.data
-                                        //<< flush  ;  //
-                                     << endl;
-
-                        // storing the time data
-                        target_event->active_stopper2_time[module]
-                                [(x_y_plate * NR_OF_STOPPER_STRIPES_X) + stripe] =
-                                word.word775.data_word.data;
-                        target_event->active_stopper2_fired[module][x_y_plate] = true;
-                    } else
-#endif
-#ifdef ACTIVE_STOPPER3_PRESENT
-                        if(lookup_active_stopper3_time.current_combination(
-                                    word.word775.data_word.geo,
-                                    word.word775.data_word.channel,
-                                    &module, &x_y_plate, & stripe)) {
-                            DBGT
-                                    cout << " --- this is TIME information for stopper3 "
-                                         << " det = " << module
-                                         << ", x_y_plate= " << x_y_plate
-                                         << ", stripe= " << stripe
-                                         << ", data = " << word.word775.data_word.data
-                                            //<< flush  ;  //
-                                         << endl;
-
-                            // storing the time data
-                            target_event->active_stopper3_time[module]
-                                    [(x_y_plate * NR_OF_STOPPER_STRIPES_X) + stripe] =
-                                    word.word775.data_word.data;
-                            target_event->active_stopper3_fired[module][x_y_plate] = true;
-                        } else
-#endif
-
-                        {
-                            static int licznik;
-                            if(!((licznik++) % 1000))
-                                cout << "unpacking Caen V775.  Combination   GEO = " << current_geo
-                                     << ", channel = " << word.word775.data_word.channel
-                                     << " is unknown for active stopper lookup table (time) " << endl;
-                        }
-
-            }// local
-                break;
-
-            case 4:
-                DBGT cout << "Footer  when i = .." << i << endl;
-                current_vme_blok = unknown; // so the next has to be recognized again
-                //counter775modules++;
-                break;
-
-            case 6:
-                DBGT cout << "'Not valid datum for this TDC when i = .." << i
-                             //         << " vme module nr " << counter775modules
-                             //         << " didn't fired "
-                          << endl;
-                //counter775modules++;
-                break;
-
-            default :
-                DBGT cout << "Error - unknown code in VME time information  when i = .." << i << endl;
-                break;
-            } // endof inner switch
-
-            break;
-
-            // ########################################################################
-        case typ_vme767: //---------------------------------------------------------------------
-
-            switch(word.word767.header_word.code) {  // <-- it is common to all of types of vme words
-            case 2: {
-                current_geo = word.word767.header_word.geo;
-                DBGT cout << "Caen TDC V767 Header ------------------------, geo = " << current_geo << endl;
-            }
-                break;
-
-            case 0:
-                //        if(current_geo <  25  && word.word767.data_word.channel <128)
-            {
-                // local
-
-                DBGT cout << "Arrived TIME geo = " << current_geo
-                          << ", chan = " << word.word767.data_word.channel
-                          << ", data = " << word.word767.data_word.time_data
-                          << endl;
-
-                int module = 0;
-                int x_y_plate = 0;
-                int stripe = 0;
-
-#ifdef ACTIVE_STOPPER_PRESENT
-                // STOPPER A ==========================
-                if(lookup_active_stopper_time.current_combination(
-                            current_geo,
-                            word.word767.data_word.channel,
-                            &module, &x_y_plate, & stripe)) {
-                    DBGT
-                            cout << " --- this is TIME information for stopper "
-                                 << " det = " << module
-                                 << ", x_y_plate= " << x_y_plate
-                                 << ", stripe= " << stripe
-                                 << ", data = " << word.word767.data_word.time_data
-                                    //<< flush  ;  //
-                                 << endl;
-
-                    // storing the time data
-                    target_event->active_stopper_time[module]
-                            [(x_y_plate * NR_OF_STOPPER_STRIPES_X) + stripe] =
-                            word.word767.data_word.time_data;
-                    target_event->active_stopper_fired[module][x_y_plate] = true;
-
-                } else
-#endif
-#ifdef ACTIVE_STOPPER2_PRESENT
-                    if(lookup_active_stopper2_time.current_combination(
-                                current_geo,
-                                word.word767.data_word.channel,
-                                &module, &x_y_plate, & stripe)) {
-                        DBGT
-                                cout << " --- this is TIME information for stopper2 "
-                                     << " det = " << module
-                                     << ", x_y_plate= " << x_y_plate
-                                     << ", stripe= " << stripe
-                                     << ", data = " << word.word767.data_word.time_data
-                                        //<< flush  ;  //
-                                     << endl;
-
-                        // storing the time data
-                        target_event->active_stopper2_time[module]
-                                [(x_y_plate * NR_OF_STOPPER_STRIPES_X) + stripe] =
-                                word.word767.data_word.time_data;
-                        target_event->active_stopper2_fired[module][x_y_plate] = true;
-                    } else
-#endif
-#ifdef ACTIVE_STOPPER3_PRESENT
-                        if(lookup_active_stopper3_time.current_combination(
-                                    current_geo,
-                                    word.word767.data_word.channel,
-                                    &module, &x_y_plate, & stripe)) {
-                            DBGT
-                                    cout << " --- this is TIME information for stopper3 "
-                                         << " det = " << module
-                                         << ", x_y_plate= " << x_y_plate
-                                         << ", stripe= " << stripe
-                                         << ", data = " << word.word767.data_word.time_data
-                                            //<< flush  ;  //
-                                         << endl;
-
-                            // storing the time data
-                            target_event->active_stopper3_time[module]
-                                    [(x_y_plate * NR_OF_STOPPER_STRIPES_X) + stripe] =
-                                    word.word767.data_word.time_data;
-                            target_event->active_stopper3_fired[module][x_y_plate] = true;
-                        } else
-#endif
-
-                        {
-                            static int licznik;
-                            if(!((licznik++) % 1000))
-                                cout << "unpacking Caen V767.  Combination   GEO = " << current_geo
-                                     << ", channel = " << word.word767.data_word.channel
-                                     << " is unknown for active stopper lookup table (time) " << endl;
-                        }
-            } // local
-                break;
-
-            case 1:
-                DBGT cout << "Footer  when i = .." << i << endl;
-                current_vme_blok = unknown; // so the next has to be recognized again
-            {
-                // local scope
-                static int how_many_errors;
-                if(word.word767.end_of_block_word.status) {
-                    how_many_errors++;
-                    if(flag_accept_single_ger && flag_accept_single_dgf) {
-                        static time_t last_message = time(NULL);
-                        if((time(NULL) - last_message > 5) && (how_many_errors > 500)) {         // every 5 seconds
-                            last_message = time(NULL);
-                            cout << "Error status in Caen 767 block (which deliveres LR time). Please reset it"
-                                 << endl;
-
-                            //cout << "This is sorting online " << endl;
-
-                            ofstream plik("./commands/synchronisation_lost.txt");
-                            plik
-                                    << "Long Range TDC status Watchdog barks !\n"
-                                    << "The Status bitfield in NON ZERO.\n  "
-                                    << "\nNote: - If you do not care about this (for example you are interested only in FRS)\n"
-                                       "Please go:\n"
-                                       "Spy_options->Matching of MBS subevent->Modify above parameters (wizard)->5 branches [next]->\n"
-                                       "->Do not make matching [next]-> here please uncheck the fields 'GER' and 'DGF',\n"
-                                       "Then finish the wizard (and update spy if it is running)"
-                                    << endl;
-                            plik.close();
-
-                        } // every 5 seconds
-                        DBGT cout << "end of unpacking the subevent ==============" << endl;
-                        return false;
-                    }
-
-                } else { // no error in status
-                    how_many_errors = 0;
-                }
-            } // locaal
-                break;
-            case 3:
-                DBGT cout << " 'Not valid datum for this TDC when i = .." << i << endl;
-                break;
-
-            default :
-                DBGT cout << "no Code,  i = .." << i << endl;
-                break;
-            }
-
-            break;
-
-        }// end of  switch(current_vme_blok)
-
-    } // end of for i
-    DBGT cout << "end of unpacking the subevent type 45 ==============" << endl;
-    return true;
-
-}
-//****************************************************************************************
-#endif
 void *TIFJEventProcessor::GetInputEvent()  // virtual f. from the abstract class
 {
     cout
@@ -7701,164 +5697,8 @@ void *TIFJEventProcessor::GetInputEvent()  // virtual f. from the abstract class
 
     return NULL;
 }
-
 //****************************************************************************************
-//****************************************************************************************
-#if CURRENT_EXPERIMENT_TYPE==PRISMA_EXPERIMENT
-
-/** This function is unpacking  directly  from the LMD data block  */
-bool TIFJEventProcessor::unpack_prisma_event(const_daq_word_t *data, int how_many_words)
-{
-    //   cout << " F.  unpack_Prisma_event" << endl;
-
-#if 0
-    //  cout << "So far fake Prisma_event unpacking " << endl;
-    return true;
-#else
-
-    // NOTE: This is a stuff coppied from pisolo function. It has to be written to adopt Prisma data
-
-
-    // warning: this function should not destroy this was is done by other frs_user function
-
-
-    vme_775_word word;
-    if(flag_vmeOne_zeroing_needed) { // to zeroing before frs or frs_user unpacking function
-        memset(&vmeOne[0][0], 0, sizeof(vmeOne));
-        flag_vmeOne_zeroing_needed = false;
-    }
-
-    int header_geo = -1;
-    for(int i = 1; i < how_many_words - 1; i++) { // seems that in the first word is a length of the block
-        word.raw_word = data[i];
-
-        if(!word.raw_word) { // do not analyse empty words
-            // just skip, do not complain
-            continue;
-        }
-
-        switch(word.header_word.code)  // <-- it is common to all of
-            // types of vme words
-        {
-        case 2: // this is a header
-            //       cout << "This is the vme header ..........."               // normally we do not care, but if it is geo 6...
-            //       << " geo = " << word.header_word.geo
-            //       << ", word nr " << i
-            //       << endl;
-
-            header_geo = word.header_word.geo;
-
-#ifdef NIGDY            // ------------------------------------------------------------------------
-
-            if(word.header_word.geo == 6) {
-                // this block nr 6 works with different convention.
-                // Data words just follow header by many (32) raw data words
-                for(unsigned int k = 0; k < word.header_word.cnt; k++) {
-                    // each data word is comming from some channel, so we place it into vme array
-                    //cout << "[" << k << "] " <<  data[1+i+k] << " "<< endl ;
-                    vmeOne[word.header_word.geo][k] = data[i + k + 1];
-                }
-                //vme[word.header_word.geo][3] = 77;
-                //cout << endl;
-
-                // after copying, we jump over them in the outer loop, they are processed
-                i += word.header_word.cnt;
-            }
-#endif  // nigdy        // ------------------------------------------------------------------------
-            break;
-
-        case 0:
-            // sizes are hardcoded in the class definition
-            //       cout << "Code is 0, data word"
-            //       << ", word nr " << i
-            //       << endl;
-
-            if(header_geo != word.data_word.geo) {
-                // cout << "this can be the AGAVA block, we skip such a data" << endl;
-                break;
-            }
-
-            // loading into the vme table.
-            if(word.data_word.geo < 22 && word.data_word.channel < 32) {
-                vmeOne[word.data_word.geo][word.data_word.channel]
-                        = word.data_word.data;
-            }
-            // trap for debugging
-            //             if (word.data_word.geo-5 == 1 && (word.data_word.channel == 8)  )
-            //             {
-            //
-            //                         cout << "Data word in the event,  Now:   vme["
-            //                         << word.data_word.geo-5 << "][" << word.data_word.channel
-            //                         << "] has value = " << word.data_word.data << endl;
-            //
-            //
-            // //                         cout << " YES, raw value = " << hex << (word.raw_word & 0xffff)
-            // //                         << dec << endl;
-            //             }
-
-
-
-            if(word.data_word.geo == 0) break;  // geo  0 is for AGAVA which we skip
-            if(word.data_word.geo > 0) word.data_word.geo -= 5;   // I do not know why
-
-            if(word.data_word.geo >= lookup_prisma.size()) {
-                static int cnt = 0 ;
-                if(!((cnt++) % 300000)) {
-                    cout  << "Unknown  geo = " <<  word.data_word.geo
-                             // << ",  lookup_prisma.size() = " << lookup_prisma.size()
-                          << endl;
-                }
-                break;
-            }
-
-            if(word.data_word.channel >= lookup_prisma[word.data_word.geo].size()) {
-                cout  << "Unknown  channel " << word.data_word.channel
-                      << ",  lookup_prisma[" << word.data_word.geo << "].size() = " << lookup_prisma[word.data_word.geo].size() << endl;
-                break;
-            }
-
-            target_event->thePrismaDataMap[  lookup_prisma
-                    [word.data_word.geo]
-                    [word.data_word.channel] ] = word.data_word.data ;
-
-
-            break;
-
-        case 4:
-            //       cout << "Code 4 = End of block\n"
-            //       << ", word nr " << i
-            //       << endl;
-            break;
-
-        case 6:
-            //       cout << "Code 6 = Not valid datum \n" << endl;
-            break;
-
-        default: {
-            static int cnt = 0 ;
-            if(!((cnt++) % 25000)) {
-                cout << "Unknown VME Code file (" << word.header_word.code
-                     << ") in a data word"   //  "  (LINE= " << __LINE__ << ")"
-                     << ".  Possibly a corrupted event in the data file: "
-                     << RisingAnalysis_ptr->give_current_filename()
-                     << endl;
-            }
-            return false;
-        }
-            break;
-        }
-    }
-#endif
-
-    return true;
-}
-
-//****************************************************************************************
-#endif // PRISMA_EXPERIMENT
-
-
-//*****************************************************************************
-void TIFJEventProcessor::unpack_trigger_pattern(int event, int subevent, uint32_t *data, int length)
+void TIFJEventProcessor::unpack_trigger_pattern(int /*event*/, int /*subevent*/, uint32_t *data, int /*length*/)
 {
     //     cout << __func__ << endl;
     //output ( event, subevent, ( uint32_t* ) data, length );
@@ -7909,518 +5749,1332 @@ void TIFJEventProcessor::unpack_trigger_pattern(int event, int subevent, uint32_
 }
 //*****************************************************************************
 // for a combination  (i_setyp == 36 && i_sestyp==1) - it is CAEN V1724
-void TIFJEventProcessor::unpack_caen_v1724(int event, int subevent, uint32_t *p_se, int length)
+void TIFJEventProcessor::unpack_caen_v1724_kratta_digitizer(int /*event*/, int /*subevent*/, uint32_t *p_se, int length)
 {
-    //cout << __func__ << endl;
+//    cout << "\n=============================\n"
+//         << __func__  << ",  subevent length = "<< length << endl;
 
-    //bool empty_evt=0;
+    //constexpr int how_many_chan_for_pedestal = 30; // 50;
 
-    // cout << "V1724,  length = "<< length << endl;
+    if(length <= 0) {
+        // cout << "Empty Event v1724!  " << endl;
+        return;
+    }
 
-    //     int i_nevent = event;
+    // decoding  V1724 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 
-    constexpr int how_many_chan_for_pedestal = 30; // 50;
+    // for debugging purposes we want to see some words
+    //    for(int i = 0 ; i < 160 ; ++i)
+    //    {
+    //        cout << "p_se[" << i << "] -> " << hex << *(p_se+i)
+    //             << dec << ", dec= " << *(p_se+i) << endl;
+    //        if(  (*(p_se+i) & 0xf0000000) == 0xa0000000) break;
+    //    }
 
-    //bool fired[KRATTA_NR_OF_CRYSTALS][3]= {{0,0,0}};   // to zrobic w Tevent
+#ifdef NEW_WITHOUT_HECTOR_HERE
+    if((p_se[0] >> 28)   == 0xa) { // new, mixed data
+        //            cout << "Old only Kratta data" << endl;
+    } else {
+        //            cout << "New Kratta + Hector data" << endl;
+        // analizuj hectora
 
+        unpack_hector(p_se, true, length);   // true hector data, (not phoswich)
 
-    if(length > 0) {  // rozkodowanie V1724 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+        // first word says how many longwords to skip to jump into kratta data
+        // przeskocz od kratty
+        int skip_over_hector = p_se[0];
 
-
-        //         for(int i = 0 ; i < 10 ; ++i)
-        //         {
-        //             cout << i << ") -> " << hex << *(p_se+i) << endl;
-        //         }
-
-
-        if((p_se[0] >> 28)   == 0xa) { // new, mixed data
-            // cout << "Old only Kratta data" << endl;
+        if(skip_over_hector) {
+            //                cout << "JEST PRAWDZIWY PRZESKOK " << skip_over_hector << " slow "  << endl;
         } else {
-//            cout << "New Kratta + Hector data" << endl;
-            // analizuj hectora
-
-            unpack_hector(p_se);
-
-            // first word says how many longwords to skip to jump into kratta data
-            // przeskocz od kratty
-            int skip_over_hector = p_se[0];
-
-            if(skip_over_hector) {
-                //cout << "JEST PRAWDZIWY PRZESKOK " << endl;
-            } else {
-                //cout << "Nie ma danych hectora  " << endl;
-            }
-
-            p_se += skip_over_hector + 1;
-            length -= skip_over_hector;
-            cout << "skipping " << skip_over_hector +1  << " words " << endl;
+            //                cout << "Nie ma danych hectora  " << endl;
         }
-        int i_EVENT_SIZE0   = length;
-        int addr_mod = 0;
+        d f g
+                p_se += skip_over_hector + 1   ;
+        length -= skip_over_hector     ;
+        //        cout << "skipping " << skip_over_hector +1  +2 << " words " << endl;
+    }
+#endif
 
-        //         return;
-        // petla dopoki (addr_mod < i_EVENT_SIZE0 - 1)
-        do {
+    if(length <= 1)       return; // no kratta data
+    if(length > 15000)  // probably nonsense
+        return;
+
+    //#######################################
+    // #if VISITING_CARD == 1
 
 
-            int i_EVENT_SIZE    = (p_se[addr_mod + 0]) & 0xfffffff;
-            char i_1010         = char((p_se[addr_mod + 0] >> 28) & 0xf);
-            int i_CHANNEL_MASK  = (p_se[addr_mod + 1]) & 0xff;
-            int i_PATTERN       = (p_se[addr_mod + 1] >> 8) & 0xffff;
-            int i_RES           = (p_se[addr_mod + 1] >> 25) & 0x3;
-            int i_BOARD_ID      = (p_se[addr_mod + 1] >> 27) & 0x1f;
-            int i_EVENT_COUNTER = (p_se[addr_mod + 2]) & 0xffffff;
-            int i_TRIG_TIME_TAG = (p_se[addr_mod + 3]);
 
-            if(0) // just to avoid warning about the unused variables from above
+    // przeskok na razie jednej visiting card
+
+    // int skip_vc_in_words = (sizeof(visitcard) - sizeof(uint32_t)) / sizeof(uint32_t);
+    int nr_of_analysed_words = 0 ;
+
+    for(int nr_visiting = 0 ; nr_of_analysed_words < length; ++nr_visiting)
+        //for(int nr_visiting = 0 ; nr_visiting < 1; ++nr_visiting)
+    {
+        // cout << "Visitcard nr " << nr_visiting << endl;
+        if(nr_visiting > 0)
+        {
+            //                    cout << "nr_of_analysed_words = "
+            //                         << nr_of_analysed_words
+            //                         << ", length = " << length
+            //                         << endl;
+            //exit(0);
+        }
+
+        Tvisitcard * visit_ptr = ( Tvisitcard *)(p_se + nr_of_analysed_words);
+
+        uint32_t how_many_words = visit_ptr->size;
+
+        //        cout << "Info from visitcard, Type = " << visit_ptr->type
+        //              << ", name = " << visit_ptr->name << endl;
+
+
+
+        //                cout << "Size of this visit block = "
+        //                     << how_many_words
+        //                     << ", after skipping visit= " << how_many_words - skip_vc_in_words
+        //                     << endl;
+
+
+        // cout << "Testing  NOWY_PIOTR linia " << __LINE__ << endl;
+        if(visit_ptr->type == string("V1724"))
+        {
+            //cout << "Wykryta wizytowka digitizera V1724, " << visit_ptr->name<< endl;
+
+
+            d1724.Load(&visit_ptr->data);
+            //            d1724.Dump();
+
+            /*
+            uint8_t marker;
+            uint32_t size;
+            uint8_t channel_mask;
+            uint16_t pattern;
+            uint8_t  board_id;
+        //    uint8_t  compression;
+            uint32_t counter;
+            uint32_t time;
+            uint16_t * data;
+            int buf_size;
+            uint16_t * channel[8];
+
+*/
+
+            //            struct Tdigitizer
+            //            {
+            //                unsigned int  event_size : 28;
+            //                unsigned int  header_code : 4;
+            //                unsigned int  channel_mask_0_7 : 8;
+            //                unsigned int  pattern_trig_opt : 16;
+            //                unsigned int   : 2;
+            //                unsigned int  bf : 1;
+            //                unsigned int  board_id_geo : 5;
+            //                unsigned int  event_counter : 24;
+            //                unsigned int  channel_mask_8_15 : 8;
+            //                unsigned int  trigger_time_tag : 32;
+            //            };
+
+            //            Tdigitizer * dig_ptr =  (Tdigitizer *) &visit_ptr->data;
+
+            //            cout << "Digitizer 1724 header data: "
+            //                 << ", event_size = " <<  dig_ptr->event_size
+            //                 << ", header_code  [10] = " <<  dig_ptr->header_code
+            //                 << "\nchannel_mask_0_7 0x" << hex << dig_ptr->channel_mask_0_7
+            //                 << " channel_mask_8_15 0x" << hex << dig_ptr->channel_mask_8_15
+            //                 << "\npattern_trig_opt " << hex << dig_ptr->pattern_trig_opt
+            //                 << " board_id_geo " << hex << dig_ptr->board_id_geo
+            //                 << " event_counter " << dec << dig_ptr->event_counter
+            //                 << " trigger_time_tag " << hex << dig_ptr->trigger_time_tag
+            //                 << " " << dec << endl;
+
+
+            //int fadc_board = visit_ptr->name[4] - '0';   // should be fadcN (mod = 0-8)
+            string from_where = visit_ptr->name;
+            if(from_where.substr(0, 4) == "fadc")
             {
-                cout  << "Nowa grupka danych  "
-                      << "i_1010 = " <<  (int) i_1010
-                      << "  i_EVENT_SIZE = "
-                      << i_EVENT_SIZE
-                      << " ze slowa danych " << hex << p_se[addr_mod+0] << dec
-                      << ", length = " << length << ", while now we are at "  << addr_mod
-                      << endl;
+                //#define KRATTA_DATA_OTHERWISE_PLASTIC  true
+
+                //#if KRATTA_DATA_OTHERWISE_PLASTIC
 
 
+                auto current_board = ltb_kratta->FindBoard(visit_ptr->name);
 
-                cout << "BOARD_ID = " <<  i_BOARD_ID
-                     <<  ", i_RES = " << i_RES
-                      << ", i_PATTERN = "  << i_PATTERN
-                      << " i_CHANNEL_MASK = " << i_CHANNEL_MASK << endl;
+                for(int ch = 0 ; ch < d1724.GetNchan() ; ++ch)
+                {
+                    if(d1724.Empty(ch))
+                        continue;
 
-                cout << "i_EVENT_COUNTER = " <<  i_EVENT_COUNTER << endl;
-                cout << "i_TRIG_TIME_TAG = " <<  i_TRIG_TIME_TAG << endl;
-            } // end if 0
-            if(i_EVENT_SIZE <= 0 ||  i_EVENT_SIZE > 20000) {
-                cout << "Event size " << i_EVENT_SIZE<<  "  ????? ALARM " << endl;
-                return;
-            }
+                    for(int s = 0 ; s < 3; ++s)   // s is  0 = time, 1 -> amplitude  2-> pedestal
+                    {
+                        auto wart = d1724.GetData(ch, s);
+                        if(wart != 0){
+                            //                            cout << "Digitizer Channel " << ch
+                            //                                 << ", signal " << s << " ==> value " << wart
+                            //                                    //<< ", current_board " << current_board
+                            //                                 << endl;
 
-            int ich_indx = 0;
-            for(int ich = 0; ich < 8; ich++) {
-                if(i_CHANNEL_MASK & (1 << ich)) { //fired channel
-                    ich_indx++;                    // zliczenie ile kanalow zadzialalo
+
+                            // NOT USED ANYMORE
+                            // distributing to the unpacked event
+                            //                        target_event->digitizer_data[(16*ch) + s] = wart / 4;       // int32 array, (for BaF)
+                            //                        target_event->digitizer_int16data[(16*ch) + s] = wart / 4;  // short int array (for Tone_signal)
+                            // because 0-15 is time, 16-31 qshort (fast), 32-48 qlong(slow)
+
+                            if(ch > (current_board.Size()-1) )
+                            {
+                                current_board.Print() ;
+                                cout << "ERROR: (A) TOO BIG INDEX ch = " << ch
+                                     << ",  while the possible (for this board) in LUT is: [0 till "
+                                     << current_board.Size()-1   << "]"
+                                     << endl;
+                            }
+
+                            auto fch = current_board.FindChannel(ch);
+                            if(fch.Size() != 1)
+                            {
+                                cout << "\nERROR: In lookup table for kratta there is no proper entry for " << visit_ptr->name
+                                     << ", channel = " << ch << endl;
+                                exit(88);
+
+                            }
+                            int id_kratty = fch[0]->GetID();
+                            //int id_kratty = current_board[id_indeks]->GetID();
+
+                            //int id_kratty = current_board[ch]->GetID();
+
+                            // for ex. "pd1.time" we take the digit which must be here
+                            int pd_kratty = fch[0]->GetVariable(0) [2] - '0';
+                            //int pd_kratty = current_board[ch]->GetVariable(0) [2] - '0';
+
+
+                            /*                       // it must be kratta, because only this data we loaded into LUT
+                       string typ_urzadzenia = current_board[ch]->GetBranch();
+
+                       cout << "LOOKUP_PIOTRA: "
+                               "Board = " <<  visit_ptr->name << " / " << ch
+                            << " --> typ_urzadzenia = " << typ_urzadzenia
+                            << ", id  = " << id_kratty
+                            << ", pd = " << pd_kratty
+                            << endl;
+*/
+
+                            int to_which = (pd_kratty*3 + s);
+
+                            //                        if(id_kratty == 0)
+                            //                        {
+
+                            //                            cout << "Kratta_" << id_kratty
+                            //                                 << " pd" << pd_kratty
+                            //                                 << ", signal type  s = "
+                            //                                 << s
+                            //                                 << " [0]->time, [1]->ampl, [2]->pedestal, value = "
+                            //                                 << wart << ", so to_which matrix element= " << to_which
+                            //                                 << endl;
+                            //                        }
+
+                            //wart = 100 * fadc_board + 10 * ch  + s;   // <-- fake for testing
+                            target_event->kratta[id_kratty][to_which]  = wart; // energy value, pedestal, time;
+                        }
+                    }
+                }
+            } // endif "fadc"
+            //#else   // KRATTA_DATA_OTHERWISE_PLASTIC
+            else {
+
+                auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
+                for(int ch = 0 ; ch < d1724.GetNchan() ; ++ch)
+                {
+                    if(d1724.Empty(ch))
+                        continue;
+
+                    auto wart = d1724.GetData(ch, 0);
+                    if(wart != 0)
+                    {
+                        //                        cout << "Digitizer Channel " << ch
+                        //                             << ", signal " << s << " ==> value " << wart << endl;
+
+                        if(current_board.Size() == 0)
+                        {
+                            cout << "For signals coming from d1724 - the plastic lookup table is empty "
+                                 << endl;
+                            continue;
+                        }
+                        if(current_board[ch] == 0)
+                        {
+                            cout << "For d1724, Channel " << ch
+                                 << " is not mentioned in a plastic lookup table " << endl;
+                            continue;
+                        }
+                        int id_plastic = current_board[ch]->GetID();
+                        // cout << "v775 Kanal " << ch << " wartosc " << wart << endl;
+                        // distributing to the event
+
+                        // cout << "Plastic data. id_plastic " << id_plastic << ", value = " << wart << endl;
+                        target_event->plastic[id_plastic] = wart;     // time goes to 0. If in future we have energy, it will go to 1
+
+                    }
+
+                }
+            } // endif else "fadc"
+            //#endif
+
+        }  // end wizytowki V1724
+
+        else if(visit_ptr->type == string("V830"))
+        {
+            unpack_V830(visit_ptr);
+#if 0
+            static unsigned int licznik ;
+            if( !( (++licznik) % 100))
+                cout << "Wykryty scaler V830 z danymi nazwanymi: "
+                     << visit_ptr->name
+                     << endl;
+            //auto current_board = scaler.FindBoard(visit_ptr->name);
+            d830.Load(&visit_ptr->data);
+
+            //auto current_board = visit_ptr->name;
+            // usually scl0,1,2,3
+            // cout << current_board << endl;
+            int board = visit_ptr->name[3] - '0';
+
+            for(int n = 0 ; n < d830.GetNchan() ; ++n)
+            {
+                auto wart = d830.GetData(n, 0);
+                if(wart > 0){
+                    // cout << "d830 Kanal " << n << " wartosc " << wart << endl;
+                    // distributing to the event
+
+                    int chan = board*32 + n;
+
+                    // cout << "Plastic scaler  " << chan << ", value = " << wart << endl;
+                    if(chan <KRATTA_NR_OF_PLASTICS )
+                        target_event->plastic_scalers[chan] = wart;
                 }
             }
-            //             cout << "No. of fired channels " << ich_indx << endl;
-            int n_sample = 0;
-            if(ich_indx > 0) n_sample = 2 * (i_EVENT_SIZE - 4) / ich_indx;
-            //             cout << "SAMPLE: "<< n_sample << endl;
+#endif
+            nr_of_analysed_words += how_many_words;
+            continue;
 
-            // do liczenia sredniej. czy to dobre miejsce - przeciez tu pracujemy z 8 kanalami !!!
-            float value_min =  1.e9;   // minimalna wartosc sygnalu w przebiegu
-            float value_max = -1.e9;
-            unsigned int ch_max = 0;
+        }
+        else if(visit_ptr->type == string("V775"))
+        {
 
-            int time = 0;
-            ich_indx = 0;
-            for(int ich = 0; ich < 8; ich++) {
+            unpack_V775(visit_ptr);
+#if 0
+            //            cout << "\nWykryta wizytowka V775 o name "
+            //                 << visit_ptr->name << endl;
 
-                //                 cout <<"czy jest sygnal z  Board_id = " << i_BOARD_ID << ", channel " << ich << endl;
+            //            if(visit_ptr->name == string("tdc4"))
+            //            {
 
+            //                cout << "Uwaga " << endl;
+            //            }
+            d775.Load(&visit_ptr->data);
 
+            // This will be plastic or silicon data
+            auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
 
-                //cout << "przed petla  chmin= " << chmin << " chmax=" << chmax << endl;
-                value_min =  1.e9;   // minimalna wartosc sygnalu w przebiegu
-                value_max = -1.e9;
-                if(i_CHANNEL_MASK & (1 << ich)) { //fired channel
+            for(int n = 0 ; n < d775.GetNchan() ; ++n)
+            {
+                auto wart = d775.GetData(n, 0);
+                if(wart > 0)
+                {
+                    //                    cout << "775 for channel " << n
+                    //                         << " there is a data: " << wart << endl;
 
-                    //                      cout <<"Jest sygnal z  Board_id = " << i_BOARD_ID << ", channel " << ich << endl;
-                    // fired, so no we try to decode it
-
-                    kwartet t = lookup_kratta.current_combination(i_BOARD_ID, ich) ;// <-- Fake   // gg->GetIndexFromFadc(i_BOARD_ID, ich);
-
-                    if(t.module  == -1) {
-                        cerr << "Blad lookup table dla kratta - kombinacji " << i_BOARD_ID << " channel " << ich
-                             << " nie przewidziano w lookup table  calibration/geo_map.geo"
+                    if(current_board.Size() == 0)
+                    {
+                        //static int licznik = 0;
+                        //if( (++licznik % 100) == 0)
+                        cout << "For signals coming from v775 "
+                             << visit_ptr->name
+                             << " - the plastic/silicon lookup table "
+                             << " is empty "
                              << endl;
-                        exit(0);
-                    }
-                    int mod  =  t.module ; // <---Fake   // gg->GetModuleNo(ggi);   // module number
-                    int isig =  t.signal;  //  <--- Fake   //gg->GetSignalNo(ggi);   // signal nr  (kazdy modul daje 3 rodzaje sygnalow)
-
-                    int flag_ok = t.ok_flag ;
-                    if(!flag_ok) continue;    // we skip such data  which was disabled in the geo file by setting flag false.
-
-                    string label = t.label ;
-
-                    //                     cout
-                    //                             << "  i_BOARD_ID = " << setw(2) << i_BOARD_ID
-                    //                             << ", ich " << ich
-                    //                             << " ---> mod " << setw(2) << mod
-                    //                             << " isig " << setw(2) << isig
-                    //                             << " flag= "<< flag_ok << "   " << label
-                    //                             << endl;
-
-
-
-                    if(mod < 0 || mod >= KRATTA_NR_OF_CRYSTALS) {
-                        cout << "bad module = " << mod << " >= " << KRATTA_NR_OF_CRYSTALS << " \n" << endl;
                         continue;
                     }
 
 
-                    //fired[mod][isig]=true;
-                    int bin_nr = 1; // <-- nr kanlu w widmie przebiegu sygnalu
+                    auto branch = current_board.FindChannel(n);
+                    static int licznik;
+                    if(branch.Size() != 1)
+                    {
+                        if( (++licznik % 500) == 0 )
+                            cout << "[A] Signal from the v775, " << visit_ptr->name << ", channel "
+                                 << n
+                                 << " this entry is "<< (branch.Size() )
+                                 << " times mentioned in a plastic/silicon lookup table "
+                                    " (so this signal is ignored) "
+                                 << endl;
 
-                    float pds = 0; // wyglada na to ze to pedestal liczony z pierwszych how_many_chan_for_pedestal   kanalow
+                        continue;
+                    }
+                    // distributing to the event
+                    // cout << "v775 Kanal " << n << " wartosc " << wart << endl;
+                    //                    auto c =
+                    // branch.Print(); //   FindID()
+                    //                            const LTRecord* const *array;
+                    // auto array = branch[0];  //.GetArray();
+                    // auto id = array   ->GetID();
 
-                    vector<double> tabliczka;
-                    // w jednym dlugim slowe danych sa dwa wynki pomiaru  (stad maskowanie ponizej)
-                    for(int is = 0; is < n_sample / 2; is++) {
-                        int i_data_lsb  = (p_se[addr_mod + 4 + ich_indx * n_sample / 2 + is]) & 0x3fff;
+                    auto id  = current_board.FindChannel(n)[0]->GetID();
+
+                    //                    if(id != id_plastic){
+                    //                        cout << "Roznica nie powinna sie zdarzyc" << endl;
+                    //                    }
+                    //                    int id_plastic = current_board[n]->GetID();
 
 
-                        //                         if(is < 40)cout << "Ahist dla mod " << mod << ", sig " << isig
-                        // 			  << "  [" << is << "] = "
-                        // // 			  << ", kanal bin_nr " << bin_nr
-                        // 			  << " setBinContent z wartoscia " << i_data_lsb << endl;	// hraw[mod][isig]->SetBinContent(bin_nr,float(i_data_lsb));
+                    //                    cout << "Plastic data by TDC. " << visit_ptr->name
+                    //                         << " id_plastic "
+                    //                         << id_plastic  << "("
+                    //                         << (id_plastic/4)
+                    //                         << "+"
+                    //                         << (id_plastic%4)
+                    //                         << "), value = " << wart << endl;
+                    //                    if(id_plastic/4 == 6)
+                    //                    {
+                    //                        cout << "stop" << endl;
+                    //                    }
 
-                        if(bin_nr <= how_many_chan_for_pedestal) pds += float(i_data_lsb); // do liczenia sredniego pedestalu
-                        if(float(i_data_lsb) < value_min) value_min = float(i_data_lsb); // doliczenia min
-                        if(float(i_data_lsb) > value_max) {
-                            value_max = float(i_data_lsb); // do liczenia max
-                            ch_max = bin_nr;
-                        }
-                        tabliczka.push_back(i_data_lsb);
-                        bin_nr++;
+                    string branch_name =
+                            current_board.FindChannel(n)[0]->GetBranch();
+                    if(branch_name == string("plastic"))
+                    {
+                        target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
+                        //   cout << "to plastic[" <<id << "] goes <--- " << wart << endl;
 
-                        int i_data_msb  = (p_se[addr_mod + 4 + ich_indx * n_sample / 2 + is] >> 16) & 0x3fff;
-                        //                         if(is < 40) cout << "Bhist dla mod " << mod << ", sig " << isig
-                        // // 			  << ", kanal bin_nr " << bin_nr
-                        // 			  << "  [" << is << "] = "
-                        // 			  << " setBinContent z wartoscia " << i_data_msb << endl; // hraw[mod][isig]->SetBinContent(bin_nr,float(i_data_msb));
+                    }
+                    else if(branch_name == string("silicon"))
+                    {
+                        string variable_name =
+                                current_board.FindChannel(n)[0]-> GetVariable(0);
+                        int co = 1;
+                        if(variable_name == "time30")co = 1;
+                        else if(variable_name == "time80")co = 2;
 
-                        if(bin_nr <= how_many_chan_for_pedestal) pds += float(i_data_msb);		// do liczenia sredniego pedestalu
-                        if(float(i_data_msb) < value_min) value_min = float(i_data_msb);	// doliczenia min
-                        if(float(i_data_msb) > value_max) {
-                            value_max = float(i_data_msb);	// do liczenia max
-                            ch_max = bin_nr;
-                        }
-                        tabliczka.push_back(i_data_msb);
-
-                        bin_nr++;
-                        //if(ich==2)printf("ch %1d is %4d %6d %6d\n",ich,is,i_data_msb,i_data_lsb);
-
-                    }  // end for sample
-
-                    if(ch_max == 0 || (ch_max > ( tabliczka.size() - 10))) {
-                        // no maximu, or just near the end of the graph - we ignore it
-                        flag_ok = false;
+                        target_event->silicon[id][co] = wart;
+                        //    cout << "555to silicon[" <<id << "][" << co << "] goes <--- " << wart << endl;
                     }
 
-                    pds /= (double) how_many_chan_for_pedestal; // sredni pedestal
-
-                    // Calculating the time - when the signal rises from pedestal to 10% of its maximum
-
-
-                    // w jednym dlugim slowe danych sa dwa wynki pomiaru  (stad maskowanie ponizej)
-
-
-                    double max_ampl = value_max - pds ;
-                    const double rise20_percent_of_max  = 0.2 * max_ampl;
-                    const double rise30_percent_of_max  = 0.3 * max_ampl;
-
-                    //                  system("pwd");
-                    static int licznik = 0;
-                    ofstream  plik;
-                    plik.open("input_data.bin", ios::app | ios::binary);
-                    if(!plik) {
-                        cout << "Error while opening input_data.txt" << endl;
-                        exit(88);
-                    }
-                    
-                    if(++licznik > 200) {
-                        plik.close();
-                        //exit(12);
-                    }
-                    
-                    int dlug = tabliczka.size();
-                    plik.write((char *) &dlug, sizeof(dlug));
-
-                    for(unsigned int is = 0; is < tabliczka.size(); is++) {
-                        tabliczka[is] -= pds;
-
-                        plik.write((char *) &tabliczka[is], sizeof(tabliczka[is]));
-                        // 	      plik << tabliczka[is] << endl;
-                        // 		      cout << "  [" << is << "]" << "-->  " << tabliczka[is] ;
-                        // 		      if(is % 10 ==0) cout << endl;
-                    }
-                    plik.close();
-
-
-                    int ch2 = 0;
-                    int ch3 = 0;
-                    double y2 = 0 ;
-                    double y3 = 0;
-
-                    for(unsigned int is = how_many_chan_for_pedestal; is < ch_max; is++) {
-                        // 		      cout << "Szukanie czasu channel is = [" << is << "] has value " <<   tabliczka[is]
-                        // 			<< " max ampl = " << max_ampl
-                        //                         << " ---> Czy (value  = " << tabliczka[is]
-                        // 			<<  " >   rise_factor * (ampl) = " << rise_factor* (max_ampl)
-                        //                              << endl;
-
-                        if(ch2 == 0 && (tabliczka[is]) > rise20_percent_of_max) {
-                            // 			  cout << "Znaleziony czas " << is << endl;
-                            ch2 = is;
-
-                            // now we prefer a mean of 5 channels
-                            if(is > 2 && is < tabliczka.size() - 2) {
-                                y2 = (tabliczka[is - 2] + tabliczka[is - 1] + tabliczka[is] + tabliczka[is + 1] + tabliczka[is + 2]) / 5.0;
-                            } else {
-                                y2 = tabliczka[is];
-                            }
-
-                        }
-
-                        if((tabliczka[is]) > rise30_percent_of_max) {
-                            //        cout << "Znaleziony czas " << is << endl;
-                            ch3 = is;
-
-                            if(is > 2 && is < tabliczka.size() - 2) {
-                                y3 = (tabliczka[is - 2] + tabliczka[is - 1] + tabliczka[is] + tabliczka[is + 1] + tabliczka[is + 2]) / 5.0;
-                            } else {
-                                y3 = tabliczka[is];
-                            }
-
-                            break;
-                        }
-
-                    } // end for (is
-
-                    if(!(ch2 && ch3)) {
-                        flag_ok = false;
-                    }
-
-                    if(((y3 - y2) > 1)   && flag_ok) {
-                        time = (y3 * ch2 - y2 * ch3) / (y3 - y2);
-                        if(time <= how_many_chan_for_pedestal) {
-                            time = 0 ;
-                        }
-                    }
-
-                    if(time == 0) {
-                        // cout << "Czas nieznaleziony " << endl;
-                    }
-
-                    ich_indx++;
-
-                    //                     cout << "i_nevent= " << i_nevent << "  ich= " << ich << " pedestal pds= " << pds  << endl;
-                    //                     cout << "Wlasciwy wynik - po petli  chmin= " << chmin << " chmax=" << chmax
-                    //                          << " wartosc sygnalu  (chmax - pds) = " << (chmax - pds)
-                    //                          << endl;
-
-
-                    //if(verbose_mode_enabled)
-                    // 		    {
-                    //                     cout << " For Kratta module nr " <<  mod << ", sygnal = " << isig << " " << label
-                    //                          << "  max value value is " << chmax << ", pedestal " << pds
-                    //                          << " so (max - pedesal) = " << (chmax - pds)
-                    //                          << " time is " << time
-                    //                          << endl << endl;
-                    //                     }
-
-                    if(time) {
-                        target_event->kratta[mod][isig] = value_max - pds ; // normal values 0-2
-                        target_event->kratta[mod][3 + isig] = pds;		// pedestals are 3-5
-                        target_event->kratta[mod][6 + isig]  = time;
-                    }
-                    // cout << endl;
-
-                } else {
-                    //cout << "Channel not fired " << endl;
                 }
+            }  // endfor
+#endif
 
-            }//for(int ich = 0;ich<8;ich++)
-
-
-            addr_mod += i_EVENT_SIZE;
-            //             cout << "Na koncu petli while - addr_mod " << addr_mod << "  i_EVENT_SIZE0 = " << i_EVENT_SIZE0 << " zwiekszenie o " << i_EVENT_SIZE << endl;
-        } while(addr_mod < (i_EVENT_SIZE0 - 1));
-
-
-        //goto lab;
-        //i_nevent += 1;
-
-        //         cout << "Pelny Event:   " << empty_evt << endl;
-    } else { //empty evt
-        /// xxx empty_evt= true;
-                 cout << "Empty Event v1724!  " << endl;
-
-    }
-
-}
-//*****************************************************************************
-
-void TIFJEventProcessor::unpack_36_2800(int event, int subevent, uint32_t *data, int length)
-{
-    //     cout << __func__ << endl;
-}
-//*****************************************************************************
-
-void TIFJEventProcessor::unpack_10_1(int event, int subevent, uint32_t *data, int length)
-{
-    //     cout << __func__ << endl;
-}
-//*****************************************************************************
-
-void TIFJEventProcessor::unpack_34_1(int event, int subevent, uint32_t *data, int length)
-{
-    //     cout << __func__ << endl;
-}
-//*****************************************************************************
-
-void TIFJEventProcessor::unpack_36_2700(int event, int subevent, uint32_t *data, int length)
-{
-    //     cout << __func__ << endl;
-}
-//*****************************************************************************
-
-void TIFJEventProcessor::unpack_32_1130(int event, int subevent, uint32_t *data, int length)
-{
-    //     cout << __func__ << endl;
-}
-//*****************************************************************************
-
-void TIFJEventProcessor::unpack_36_9494(int event, int subevent, uint32_t *data, int length)
-{
-    //     cout << __func__ << endl;
-}
-//*****************************************************************************
-void TIFJEventProcessor::unpack_hector(uint32_t *data)
-{
-    // cout << __func__ << endl;
-
-
-
-
-
-#define FAKE 0
-#if FAKE
-    static ifstream plik;
-    static bool flaga;
-    if(!flaga) {
-        plik.open("hector_data_0.dat", ios::binary);
-        if(!plik) {
-            cout << "imposible to open the hector data file" << endl;
-            exit(33);
-        }
-        flaga = true;
-    }
-
-    uint32_t how_many_words = 0;
-
-
-    vector<uint32_t> bufor;
-
-    // if fake
-    if(FAKE) {
-        // read a first word (event length)file
-        plik.read((char *) &how_many_words, sizeof(how_many_words));
-        if(!plik) {
-            cout << "Error while reading length of the fake  Hector file" << endl;
-            exit(9);
-        }
-        //         cout << "How many words = " << how_many_words << hex << " " << how_many_words << dec << endl;
-
-        how_many_words = swap_int32(how_many_words);
-        //         cout << "How many words = " << how_many_words << hex << " " << how_many_words << dec << endl;
-
-        for(int i = 0 ; i < how_many_words ; i++) {
-            uint32_t d;
-            plik.read((char *)  &d, sizeof(d));
-            if(!plik) {
-                cout << "Error while reading hector data" << endl;
-                exit(91);
-            }
-
-            d = swap_int32(d);
-            bufor.push_back(d);
+            nr_of_analysed_words += how_many_words;   // UWAGA!!!!!1
+            continue;
 
         }
-        data = bufor.data();
-        //         cout << "buffor size = " << bufor.size() << endl;
-    } // fake
+        else if(visit_ptr->type == string("V879") || visit_ptr->type == string("V878"))
+        {
 
-#else
-    uint32_t how_many_words = data[0];
+            unpack_V879_878(visit_ptr);
+#if 0
+            //cout << "Wykryty V879, rozpakowuje jako 879, dane z " << visit_ptr->name << endl;
+
+            d879.Load(&visit_ptr->data);
+            // This will be plastic or silicon data
+            auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
+
+            for(int n = 0 ; n < d879.GetNchan() ; ++n)
+            {
+                auto wart = d879.GetData(n, 0);
+                if(wart > 0){
+                    // cout << "879 Kanal " << n << " wartosc " << wart << endl;
+                    // distributing to the event
+
+                    if(current_board.Size() == 0)
+                    {
+                        //static int licznik = 0;
+                        //if( (++licznik % 100) == 0)
+
+                        cout << "For signals coming from v879 "
+                             << visit_ptr->name
+                             << " - the plastic/silicon lookup table "
+                             << " is empty "
+                             << endl;
+                        continue;
+                    }
+
+                    auto branch = current_board.FindChannel(n);
+                    if(branch.Size() != 1)
+                    {
+                        cout << "For v879, " << visit_ptr->name << ", channel "
+                             << n
+                             << " is "<< (branch.Size() )
+                             << " times mentioned in a plastic/silicon lookup table "
+                             << endl;
+
+                        continue;
+                    }
+                    // distributing to the event
+
+
+                    int id  = current_board.FindChannel(n)[0]->GetID();
+
+                    string branch_name =
+                            current_board.FindChannel(n)[0]->GetBranch();
+                    if(branch_name == string("plastic"))
+                    {
+                        target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
+                        cout << "?????? to plastic[" <<id << "] goes <--- " << wart << endl;
+
+                    }
+                    else if(branch_name == string("silicon"))
+                    {
+                        string variable_name =
+                                current_board.FindChannel(n)[0]->GetVariable(0);
+                        int co = 0;
+                        if(variable_name == "time30")co = 1;
+                        else if(variable_name == "time80")co = 2;
+                        else{
+                            cout << "Katstrofa" ;
+                            continue ;
+                        }
+
+                        target_event->silicon[id][co] = wart;
+
+                        //                        if(id > 15)
+                        //                        cout << "to silicon[" <<id << "][" << co << "] goes <--- "
+                        //                             << wart << endl;
+                    }
+
+                } // end if
+            }//end for
 #endif // 0
 
+            nr_of_analysed_words += how_many_words;
+            continue;
+        }
+        else if(visit_ptr->type == string("V785"))
+        {
+            unpack_V785(visit_ptr);
+#if 0
+            // cout << "Wykryty V785, z informacja od " << visit_ptr->name<< endl;
+            d785.Load(&visit_ptr->data);
+            auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
 
-    //  VME 775 VME data ########################
-    // loop over unknown nr of words
+            for(int n = 0 ; n < d785.GetNchan() ; ++n)
+            {
+                auto wart = d785.GetData(n, 0);
+                if(wart > 0){
+                    // cout << "785 Kanal " << n << " wartosc " << wart << endl;
+                    // distributing to the event
 
-    general_vme_word word;
-    //unsigned int current_geo = 0;
+                    if(current_board.Size() == 0)
+                    {
+                        //static int licznik = 0;
+                        //if( (++licznik % 100) == 0)
+                        cout << "For signals coming from v785 "
+                             << visit_ptr->name
+                             << " - the plastic/silicon lookup table "
+                             << " is empty "
+                             << endl;
+                        continue;
+                    }
 
-    for(unsigned int i = 1; i < how_many_words; ++i) { // 1 bec. we skip counter how many words
-        //         cout << "Unpacking word " << i << ": 0x"
-        //              << hex << data[i] << dec << endl;
-        word.word775.raw_word = data[i];
-        if(!word.word775.raw_word) {  // do not analyse empty words
+
+                    auto branch = current_board.FindChannel(n);
+                    if(branch.Size() != 1)
+                    {
+                        cout << "For v785, " << visit_ptr->name << ", channel "
+                             << n
+                             << " is "<< (branch.Size() )
+                             << " times mentioned in a plastic/silicon lookup table "
+                             << endl;
+
+                        continue;
+                    }
+                    // distributing to the event
+                    // cout << "v785 Kanal " << n << " wartosc " << wart << endl;
+                    //                    auto c =
+                    // branch.Print(); //   FindID()
+                    //                            const LTRecord* const *array;
+                    // auto array = branch[0];  //.GetArray();
+                    // auto id = array   ->GetID();
+
+                    int id  = current_board.FindChannel(n)[0]->GetID();
+
+
+
+                    string branch_name =
+                            current_board.FindChannel(n)[0]->GetBranch();
+                    if(branch_name == string("plastic"))
+                    {
+                        target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
+                        cout << "?????? to plastic[" <<id << "] goes <--- " << wart << endl;
+
+                    }
+                    else if(branch_name == string("silicon"))
+                    {
+                        string variable_name =
+                                current_board.FindChannel(n)[0]->GetVariable(0);
+                        int co = 0;
+                        if(variable_name == "amplitude")co = 0;
+                        else continue ;
+
+
+                        target_event->silicon[id][co] = wart;
+                        //cout << "t444o silicon[" <<id << "][" << co << "] goes <--- " << wart << endl;
+                    }
+
+
+
+
+                } // endif
+            } // end for
+#endif
+
+            nr_of_analysed_words += how_many_words;
+            continue;
+
+        }
+
+
+        else if (visit_ptr->type == string("RATE"))
+        {
+            // ignored visitin card "RATE"
+        }
+        else {
+
+            cout << __func__ << "Unexpected visiting card "
+                 << visit_ptr->type << "--->   , origin: " << visit_ptr->name
+
+                 << " line:" << __LINE__ << ")"  << endl;
+
+        }
+
+
+
+        nr_of_analysed_words += how_many_words;
+    }// end for nr_of_visiting_cards
+}
+//*****************************************************************************
+
+void TIFJEventProcessor::unpack_36_2800(int /*event*/, int /*subevent*/, uint32_t */*data*/, int /*length*/)
+{
+    //     cout << __func__ << endl;
+}
+//*****************************************************************************
+
+void TIFJEventProcessor::unpack_10_1(int /*event*/, int /*subevent*/, uint32_t */*data*/, int /*length*/)
+{
+    cout << __func__ << " do tej pory nieużywana funkcja "<< endl;
+}
+//*****************************************************************************
+
+void TIFJEventProcessor::unpack_34_1(int /*event*/, int /*subevent*/, uint32_t */*data*/, int /*length*/)
+{
+    //     cout << __func__ << endl;
+}
+//*****************************************************************************
+
+void TIFJEventProcessor::unpack_36_2700(int /*event*/, int /*subevent*/, uint32_t */*data*/, int /*length*/)
+{
+    //     cout << __func__ << endl;
+}
+//*****************************************************************************
+
+void TIFJEventProcessor::unpack_32_1130(int /*event*/, int /*subevent*/, uint32_t */*data*/, int /*length*/)
+{
+    //     cout << __func__ << endl;
+}
+//*****************************************************************************
+
+void TIFJEventProcessor::unpack_36_9494(int /*event*/, int /*subevent*/, uint32_t */*data*/, int /*length*/)
+{
+    //     cout << __func__ << endl;
+}
+//*****************************************************************************
+void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_block, bool real_hector, int length)
+{
+    // cout << __func__ << (real_hector ? ": HECTOR" : ": Phoswich") << endl;
+
+#define VISITING_CARD 1    // 0 - no, old style;  1 - przskok, moje rozkowodanie, 2 - pełny sposób Piotra (nie dziala?)
+
+#if VISITING_CARD == 0
+    // deleted now
+#elif VISITING_CARD == 1
+
+    //    struct Tvisitcard
+    //    {
+    //        char type[8];           // type of VME board
+    //        char name[8];           // specific name of the board
+    //        uint32_t hwaddr;        // VME address of the board
+    //        uint32_t size;          // size of the data block, starting from type
+    //        uint32_t data;          // Should be always last!
+    //    };
+
+
+    // przeskok na razie jednej visiting card
+
+    if(length > 15000)  // probably nonsense block of data
+        return;
+
+    int nr_of_analysed_words = 0 ;
+
+    //int skip_vc_in_words = (sizeof(visitcard) - sizeof(uint32_t)) / sizeof(uint32_t);
+
+    for(int nr_visiting = 0 ; nr_of_analysed_words < length; ++nr_visiting)
+    {
+        //         cout << "Visitcard nr " << nr_visiting << endl;
+        //        if(nr_visiting > 0)
+        //        {
+        //            cout << "nr_of_analysed_words = "
+        //                 << nr_of_analysed_words
+        //                 << ", length = " << length
+        //                 << endl;
+        //            //exit(0);
+        //        }
+
+        Tvisitcard * visit_ptr = ( Tvisitcard *)(data_block + nr_of_analysed_words);
+        uint32_t how_many_words = visit_ptr->size;
+
+        //        cout << "Info from visitcard, Type = " << visit_ptr->type
+        //             << ", name = " << visit_ptr->name
+        //             << endl;
+
+        //                cout << "Size of this visit block = "
+        //                     << how_many_words
+        //                     << ", after skipping visit= " << how_many_words - skip_vc_in_words
+        //                     << endl;
+
+        //-----------------------------------------
+        // Recognising what kind of data it is
+        //-----------------------------------------
+
+        if(visit_ptr->type == string("V1730B"))   // digitizer dla non-kratta signals
+        {
+            //cout << "Wykryte dane z digitizera V1730B" << endl;
+
+            //                        struct Tdigitizer
+            //                        {
+            //                            unsigned int  event_size : 28;
+            //                            unsigned int  header_code : 4;
+            //                            unsigned int  channel_mask_0_7 : 8;
+            //                            unsigned int  pattern_trig_opt : 16;
+            //                            unsigned int   : 2;
+            //                            unsigned int  bf : 1;
+            //                            unsigned int  board_id_geo : 5;
+            //                            unsigned int  event_counter : 24;
+            //                            unsigned int  channel_mask_8_15 : 8;
+            //                            unsigned int  trigger_time_tag : 32;
+            //                        };
+
+            //                        Tdigitizer * dig_ptr =  (Tdigitizer *) &visit_ptr->data;
+
+            //                                    cout << "Digitizer header data: "
+            //                                         << ", event_size = " <<  dig_ptr->event_size
+            //                                         << ", header_code  [10] = " <<  dig_ptr->header_code
+            //                                         << "\nchannel_mask_0_7 0x" << hex << dig_ptr->channel_mask_0_7
+            //                                         << " channel_mask_8_15 0x" << hex << dig_ptr->channel_mask_8_15
+            //                                         << "\npattern_trig_opt " << hex << dig_ptr->pattern_trig_opt
+            //                                         << " board_id_geo " << hex << dig_ptr->board_id_geo
+            //                                         << " event_counter " << dec << dig_ptr->event_counter
+            //                                         << " trigger_time_tag " << hex << dig_ptr->trigger_time_tag
+            //                                         << " " << endl;
+
+
+            d.Load(&visit_ptr->data);
+            //d.Dump();
+
+            // There are two digitzers everyone gives part of data
+            int nr_dig = 0;
+            switch(visit_ptr->name[3])        //  "dig0" OR "dig1" ?
+            {
+            case '0':nr_dig = 0;
+                break;
+            case '1':nr_dig = 1;
+                break;
+            case '2':
+                nr_dig = 2;
+                break;
+            case '3':
+                nr_dig = 3;
+                break;
+
+            default:
+            {
+                static int counter = 0 ;
+                if( (++counter % 1000) == 0 )
+                {
+                    cout << "error in title name of visiting card ["
+                         << visit_ptr->name
+                         << "], while max number should not be higher than " << (NR_DIGITIZERS-1)
+                         << ". \nYou may change this parameter in experiment_def.h and recompile the spy program" << endl;
+                    //                exit(100);
+                }
+            }
+
+            }
+
+            // We expect that in this block there is a data for Paris (from digitgiser)
+
+            // cout << "Name of visiting card is " << visit_ptr->name << endl;
+#define PARIS_NORMALY__OTHERWISE_PLASTIC true
+            // sometimes they send plastics by this block of data
+            // it is an exceptional situation. Then set false here
+
+#if PARIS_NORMALY__OTHERWISE_PLASTIC
+
+            // so this is paris
+
+            auto current_board = ltb_paris->FindBoard(visit_ptr->name);
+            // what if the Find was not succesful?
+
+            double time_in_channel_0 = 0;
+
+
+            if(current_board.Size() == 0)
+            {
+                static int licznik = 0;
+
+                if((++licznik) %5000 == 0)
+                {
+                    cout << "Warning: For signals coming from digitizer  "
+                         <<  visit_ptr->name
+                          << " - the lookup table has no entries"
+                          << endl;
+                }
+                //continue;
+            } else
+                for(int n = 0 ; n < d.GetNchan() ; ++n)
+                {
+
+
+                    if(d.Empty(n))
+                        continue;
+
+                    auto branch = current_board.FindChannel(n);
+                    static int licznik;
+                    if(branch.Size() != 1)
+                    {
+                        if( (++licznik % 5000) == 0 )
+                            cout << "[B] For v775, " << visit_ptr->name << ", channel "
+                                 << n
+                                 << " is "<< (branch.Size() )
+                                 << " times mentioned in a the lookup table "
+                                 << endl;
+
+                        continue;
+                    }
+
+                    //
+                    //czy to paris / labr / ref ==========================================================
+                    // in case of "ref" it is only just the reference time to be subtracted
+                    // later form other channels of time.
+
+                    string branch_name = current_board.FindChannel(n)[0]->GetBranch();
+                    //cout << "nazwa branchu = " << branch_name << endl;
+
+                    bool flag_reference_time = false;
+                    if( branch_name == string("ref"))
+                        flag_reference_time = true;
+
+
+
+                    int id_parysa  = current_board.FindChannel(n)[0]->GetID();
+                    if(branch_name == "labr")
+                    {
+                        id_parysa += 28;
+                    }
+
+                    // Piotr says, that in case of "ref" the other s (fast, slow) are empty, so no harm
+                    for(int s = 0 ; s < 3; ++s) // we need 3 first data signals (time, fast(short), slow(long)
+                    {
+                        auto wart = d.GetData(n, s);
+                        if(wart != 0)
+                        {
+                            // distributing to the unpacked event
+
+
+                            if(s == 0) // if this is a time...
+                                // Note in case of time signal it should be
+                                //subtracted by the contents of channel 0
+                            {
+                                if(n == 0)
+                                {
+                                    time_in_channel_0 = wart;
+                                    //cout << "##CZAS REFERENCYJNY ##### time of chann 0 ==> " << wart << endl;
+                                }
+                                else{
+                                    wart = wart - time_in_channel_0;
+
+                                    //                                cout << " Ch " << n << ", co daje po przesunieciu (" << time_in_channel_0
+                                    //                                     << ") time:  "
+                                    //                                     << wart << endl;
+                                }
+                            }
+
+                            if(s ==0)   // TIME
+                            {
+                                // inne wzmocnienia czasu dla parysa, inne dla LaBr
+                                if(branch_name == "paris")
+                                {
+                                    wart = (wart *
+                                            100
+                                            )
+                                            //+ 1000
+                                            ;
+                                }else // labr
+                                {
+                                    //wart = (wart * 100);
+                                }
+                            }
+                            // else   // wzmocnienia dla energii
+                            //                                {
+                            //                                    wart = wart * 0.125;
+                            //                                }
+                            // double multiplier = (s != 0)? 0.125 :  100.0;
+                            // double offset = (s != 0)? 0 :  1000.0;
+
+                            if(nr_dig < NR_DIGITIZERS)
+                            {
+                                int dig_ch = (nr_dig *16*3) + (n * 3) + s ;
+                                target_event->digitizer_double_data[dig_ch] = wart;  // short int array (for Tone_signal)
+
+                                if(flag_reference_time == false) // true data, not just reference
+                                {
+
+                                    int where = id_parysa + (s * 32);    // which signal:
+                                    // because 0-31 is time, 32-63 qshort (fast), 64-96 qlong(slow)
+                                    // Paris takes directly from this array
+                                    target_event->digitizer_data[where] = wart;       // int32 array, (for BaF)
+
+
+                                    //                                if(s == 0){
+                                    //                                    cout << "   po wstaw do event --> Channel n =" <<  n
+                                    //                                         << "  (paris_" << id_parysa
+                                    //                                         << "), " ;
+                                    //                                    if(s ==0) cout << " time ";
+                                    //                                    else if (s == 1) cout << " fast? ";
+                                    //                                    else cout << " slow? ";
+
+                                    //                                    cout << " ==> value "
+                                    //                                         << wart << "  (po korekcji)  " << flush;
+                                    //                                    cout << "KKK" << endl;
+                                    //                                }
+                                } // if not reference, but normal data
+                            } // endif nr of Digitizers sensible
+
+                        } // if wart
+                    }// for s
+
+                } // for n
+
+#else
+            //@grupa3_25_02_85MeV.txt
+
+
+            // so this is plastic
+            auto current_board = ltb_plastic.FindBoard(visit_ptr->name);
+
+            if(current_board.Size() == 0)
+            {
+                cout << "For signals coming from digit. "
+                     <<  visit_ptr->name
+                      << " - the plastic lookup table has no entries"
+                      << endl;
+                //continue;
+            } else {
+                for(int ch = 0 ; ch < d.GetNchan() ; ++ch)
+                {
+                    if(d.Empty(ch))
+                        continue;
+
+                    auto wart = d.GetData(ch, 0);
+                    if(wart != 0 && wart < 100000)
+                    {
+                        cout << "Digitizer Channel " << ch
+                             << ", signal " << s << " ==> value " << wart << endl;
+
+
+                        if(ch > (current_board.Size()-1) )
+                        {
+                            current_board.Print() ;
+                            cout << "ERROR: (B) TOO BIG INDEX ch = " << ch
+                                 << ",  while the possible (for this board) in LUT is: 0-"
+                                 << current_board.Size()-1
+                                 << endl;
+                        }
+
+                        auto branch = current_board.FindChannel(ch);
+                        if(branch.Size() != 1)
+                        {
+                            cout << "\nERROR: In lookup table for 'plastic' there is no proper entry for "
+                                 << visit_ptr->name
+                                 << ", channel = " << ch << endl;
+                            exit(88);
+
+                        }
+                        //int id_kratty = branch[0]->GetID();
+
+                        //                        if(current_board[ch] == 0)
+                        //                        {
+                        //                            cout << "For digit, Channel " << ch
+                        //                                 << " is not mentioned in a plastic lookup table " << endl;
+                        //                            continue;
+                        //                        }
+                        int id_plastic = branch->GetID();
+                        //int id_plastic  = current_board.FindChannel(ch)[0]->GetID();
+
+                        // cout << "v775 Kanal " << n << " wartosc " << wart << endl;
+                        // distributing to the event
+
+                        //                                            cout << "      Plastic data by DIG. id_plastic "
+                        //                                                 << id_plastic  << "("
+                        //                                                 << (id_plastic/4)
+                        //                                                 << "+"
+                        //                                                 << (id_plastic%4)
+                        //                                                 << "), value = " << wart << endl;
+                        target_event->plastic[id_plastic] = wart;     // time goes to 0. If in future we have energy, it will go to 1
+                    }
+                }
+            }
+
+
+#endif
+            nr_of_analysed_words += how_many_words;
+            continue;
+
+        }
+        else if(visit_ptr->type == string("V775"))
+        {
+
+            unpack_V775(visit_ptr);
+#if 0
+            //            cout << "\nWykryta wizytowka V775 o name "
+            //                 << visit_ptr->name << endl;
+
+            //            if(visit_ptr->name == string("tdc4"))
+            //            {
+
+            //                cout << "Uwaga " << endl;
+            //            }
+            d775.Load(&visit_ptr->data);
+
+            // This will be plastic or silicon data
+            auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
+
+            for(int n = 0 ; n < d775.GetNchan() ; ++n)
+            {
+                auto wart = d775.GetData(n, 0);
+                if(wart > 0)
+                {
+                    //                    cout << "775 for channel " << n
+                    //                         << " there is a data: " << wart << endl;
+
+                    if(current_board.Size() == 0)
+                    {
+                        //static int licznik = 0;
+                        //if( (++licznik % 100) == 0)
+                        cout << "For signals coming from v775 "
+                             << visit_ptr->name
+                             << " - the plastic/silicon lookup table "
+                             << " is empty "
+                             << endl;
+                        continue;
+                    }
+
+
+                    auto branch = current_board.FindChannel(n);
+                    static int licznik;
+                    if(branch.Size() != 1)
+                    {
+                        if( (++licznik % 500) == 0 )
+                            cout << "[A] Signal from the v775, " << visit_ptr->name << ", channel "
+                                 << n
+                                 << " this entry is "<< (branch.Size() )
+                                 << " times mentioned in a plastic/silicon lookup table "
+                                    " (so this signal is ignored) "
+                                 << endl;
+
+                        continue;
+                    }
+                    // distributing to the event
+                    // cout << "v775 Kanal " << n << " wartosc " << wart << endl;
+                    //                    auto c =
+                    // branch.Print(); //   FindID()
+                    //                            const LTRecord* const *array;
+                    // auto array = branch[0];  //.GetArray();
+                    // auto id = array   ->GetID();
+
+                    auto id  = current_board.FindChannel(n)[0]->GetID();
+
+                    //                    if(id != id_plastic){
+                    //                        cout << "Roznica nie powinna sie zdarzyc" << endl;
+                    //                    }
+                    //                    int id_plastic = current_board[n]->GetID();
+
+
+                    //                    cout << "Plastic data by TDC. " << visit_ptr->name
+                    //                         << " id_plastic "
+                    //                         << id_plastic  << "("
+                    //                         << (id_plastic/4)
+                    //                         << "+"
+                    //                         << (id_plastic%4)
+                    //                         << "), value = " << wart << endl;
+                    //                    if(id_plastic/4 == 6)
+                    //                    {
+                    //                        cout << "stop" << endl;
+                    //                    }
+
+                    string branch_name =
+                            current_board.FindChannel(n)[0]->GetBranch();
+                    if(branch_name == string("plastic"))
+                    {
+                        target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
+                        //   cout << "to plastic[" <<id << "] goes <--- " << wart << endl;
+
+                    }
+                    else if(branch_name == string("silicon"))
+                    {
+                        string variable_name =
+                                current_board.FindChannel(n)[0]-> GetVariable(0);
+                        int co = 1;
+                        if(variable_name == "time30")co = 1;
+                        else if(variable_name == "time80")co = 2;
+
+                        target_event->silicon[id][co] = wart;
+                        //    cout << "555to silicon[" <<id << "][" << co << "] goes <--- " << wart << endl;
+                    }
+
+                }
+            }  // endfor
+#endif
+
+            nr_of_analysed_words += how_many_words;   // UWAGA!!!!!1
+            continue;
+
+        }
+        else if(visit_ptr->type == string("V879") || visit_ptr->type == string("V878"))
+        {
+
+            unpack_V879_878(visit_ptr);
+#if 0
+            //cout << "Wykryty V879, rozpakowuje jako 879, dane z " << visit_ptr->name << endl;
+
+            d879.Load(&visit_ptr->data);
+            // This will be plastic or silicon data
+            auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
+
+            for(int n = 0 ; n < d879.GetNchan() ; ++n)
+            {
+                auto wart = d879.GetData(n, 0);
+                if(wart > 0){
+                    // cout << "879 Kanal " << n << " wartosc " << wart << endl;
+                    // distributing to the event
+
+                    if(current_board.Size() == 0)
+                    {
+                        //static int licznik = 0;
+                        //if( (++licznik % 100) == 0)
+
+                        cout << "For signals coming from v879 "
+                             << visit_ptr->name
+                             << " - the plastic/silicon lookup table "
+                             << " is empty "
+                             << endl;
+                        continue;
+                    }
+
+                    auto branch = current_board.FindChannel(n);
+                    if(branch.Size() != 1)
+                    {
+                        cout << "For v879, " << visit_ptr->name << ", channel "
+                             << n
+                             << " is "<< (branch.Size() )
+                             << " times mentioned in a plastic/silicon lookup table "
+                             << endl;
+
+                        continue;
+                    }
+                    // distributing to the event
+
+
+                    int id  = current_board.FindChannel(n)[0]->GetID();
+
+                    string branch_name =
+                            current_board.FindChannel(n)[0]->GetBranch();
+                    if(branch_name == string("plastic"))
+                    {
+                        target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
+                        cout << "?????? to plastic[" <<id << "] goes <--- " << wart << endl;
+
+                    }
+                    else if(branch_name == string("silicon"))
+                    {
+                        string variable_name =
+                                current_board.FindChannel(n)[0]->GetVariable(0);
+                        int co = 0;
+                        if(variable_name == "time30")co = 1;
+                        else if(variable_name == "time80")co = 2;
+                        else{
+                            cout << "Katstrofa" ;
+                            continue ;
+                        }
+
+                        target_event->silicon[id][co] = wart;
+
+                        //                        if(id > 15)
+                        //                        cout << "to silicon[" <<id << "][" << co << "] goes <--- "
+                        //                             << wart << endl;
+                    }
+
+                } // end if
+            }//end for
+#endif // 0
+
+            nr_of_analysed_words += how_many_words;
+            continue;
+        }
+        else if(visit_ptr->type == string("V785"))
+        {
+            unpack_V785(visit_ptr);
+#if 0
+            // cout << "Wykryty V785, z informacja od " << visit_ptr->name<< endl;
+            d785.Load(&visit_ptr->data);
+            auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
+
+            for(int n = 0 ; n < d785.GetNchan() ; ++n)
+            {
+                auto wart = d785.GetData(n, 0);
+                if(wart > 0){
+                    // cout << "785 Kanal " << n << " wartosc " << wart << endl;
+                    // distributing to the event
+
+                    if(current_board.Size() == 0)
+                    {
+                        //static int licznik = 0;
+                        //if( (++licznik % 100) == 0)
+                        cout << "For signals coming from v785 "
+                             << visit_ptr->name
+                             << " - the plastic/silicon lookup table "
+                             << " is empty "
+                             << endl;
+                        continue;
+                    }
+
+
+                    auto branch = current_board.FindChannel(n);
+                    if(branch.Size() != 1)
+                    {
+                        cout << "For v785, " << visit_ptr->name << ", channel "
+                             << n
+                             << " is "<< (branch.Size() )
+                             << " times mentioned in a plastic/silicon lookup table "
+                             << endl;
+
+                        continue;
+                    }
+                    // distributing to the event
+                    // cout << "v785 Kanal " << n << " wartosc " << wart << endl;
+                    //                    auto c =
+                    // branch.Print(); //   FindID()
+                    //                            const LTRecord* const *array;
+                    // auto array = branch[0];  //.GetArray();
+                    // auto id = array   ->GetID();
+
+                    int id  = current_board.FindChannel(n)[0]->GetID();
+
+
+
+                    string branch_name =
+                            current_board.FindChannel(n)[0]->GetBranch();
+                    if(branch_name == string("plastic"))
+                    {
+                        target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
+                        cout << "?????? to plastic[" <<id << "] goes <--- " << wart << endl;
+
+                    }
+                    else if(branch_name == string("silicon"))
+                    {
+                        string variable_name =
+                                current_board.FindChannel(n)[0]->GetVariable(0);
+                        int co = 0;
+                        if(variable_name == "amplitude")co = 0;
+                        else continue ;
+
+
+                        target_event->silicon[id][co] = wart;
+                        //cout << "t444o silicon[" <<id << "][" << co << "] goes <--- " << wart << endl;
+                    }
+
+
+
+
+                } // endif
+            } // end for
+#endif
+
+            nr_of_analysed_words += how_many_words;
+            continue;
+
+        }
+        else if(visit_ptr->type == string("V830"))
+        {
+            // There is nothing in lookup table about this. PIOTR said: Ignore it
+
+            // just in case if some dat Piotr will use it
+             //  unpack_V830(visit_ptr);
+ #if 0
+
+
+            //            cout << "Wykryty scaler V830 (w danych 'kratta') z danymi nazwanymi: "
+            //                 << visit_ptr->name
+            //                 << endl;
+
+
+            d830.Load(&visit_ptr->data);
+
+            // auto current_board = visit_ptr->name;
+            // usually scl0,1,2,3
+            // cout << current_board << endl;
+            int board = visit_ptr->name[3] - '0';
+
+            for(int n = 0 ; n < d830.GetNchan() ; ++n)
+            {
+                auto wart = d830.GetData(n, 0);
+                if(wart > 0){
+                    // cout << "d830 Kanal " << n << " wartosc " << wart << endl;
+                    // distributing to the event
+
+                    int chan = board*32 + n;
+
+                    // cout << "Plastic scaler  " << chan << ", value = " << wart << endl;
+                    if(chan <KRATTA_NR_OF_PLASTICS )
+                        target_event->plastic_scalers[chan] = wart;
+                }
+            }
+#endif
+            nr_of_analysed_words += how_many_words;
+            continue;
+
+        }
+        else if(visit_ptr->type == string("RATE"))
+        {
+            // Piotr says it is for his personal use.
+            nr_of_analysed_words += how_many_words;
+            continue;
+
+        }
+        else{
+            cout << "Jeszcze nie implementowane dekodowanie " << visit_ptr->type << endl;
+            nr_of_analysed_words += how_many_words;
+
             continue;
         }
 
-        // Sometimes Henning is sending the extra word on the end of the VME block
-        // with the pattern 0xbabe****
-        if((word.word775.raw_word & 0xffff0000) == 0xbabe0000) {
-            cout << "babe word ==============" << endl;
-            break; // end of data at all, so end of the loop
-        }
+
+    }// end for visiting card
 
 
-        switch(word.word775.header_word.code) {  // <-- it is common to all of types of vme words
+#else
+#endif// Visiting card
 
-        case 2: {
-            //             cout << "Caen V775 TDC Header .." << endl;
-
-        }
-            break;
-
-        case 0:
-            // sizes are hardcoded in the class definition
-            if(word.word775.data_word.geo < 22 && word.word775.data_word.channel < 32) {
-
-                //                 cout << "Arrived  geo = " << word.word775.data_word.geo
-                //                      << ", chan = " << word.word775.data_word.channel
-                //                      << ", data = " << word.word775.data_word.data
-                //                      << endl;
-
-                //int clus = 0;
-                //int crys = 0;
-
-                // - Fast component on channels 1-8
-                // - Slow component on channels 17-24
-                // - Time information on TDC channels 1-8
-                constexpr int HECTOR_TDC_GEO = 		8;
-                constexpr int  HECTOR_ADC_GEO =	7;
-
-                if(word.word775.data_word.geo == HECTOR_TDC_GEO) {
-                    target_event->hector_tdc[word.word775.data_word.channel] = word.word775.data_word.data;
-
-                } else if(word.word775.data_word.geo == HECTOR_ADC_GEO) {
-                    target_event->hector_adc[word.word775.data_word.channel] = word.word775.data_word.data;
-                }
-            }
-            break;
-
-        case 4:
-            //             cout << "Footer  when i = .." << i << endl;
-
-            break;
-        case 6:
-            //             cout << "'Not valid datum for this TDC when i = .." << i
-            //                  << endl;
-            break;
-
-        default :
-            cout << "Error - unknown code in VME time information  when i = .." << i << endl;
-            break;
-        } // endof inner switch
-    } // end of for i
-    // cout << "end of unpackig hector" << endl;
+    // cout << "end of unpacking non kratta (hector?) " << endl;
 }
 //*****************************************************************************
 uint32_t     TIFJEventProcessor::swap_int32(uint32_t   dana)
@@ -8431,15 +7085,303 @@ uint32_t     TIFJEventProcessor::swap_int32(uint32_t   dana)
     } zrodlo, rezultat;
 
     zrodlo.d = dana;
-
     rezultat.c[0] = zrodlo.c[3];
     rezultat.c[1] = zrodlo.c[2];
     rezultat.c[2] = zrodlo.c[1];
     rezultat.c[3] = zrodlo.c[0];
-
     return rezultat.d ;
+}
+//************************************************************************************
+void TIFJEventProcessor::unpack_V775(Tvisitcard *visit_ptr )
+{
 
+    //            cout << "\nWykryta wizytowka V775 o name "
+    //                 << visit_ptr->name << endl;
+
+    //            if(visit_ptr->name == string("tdc4"))
+    //            {
+
+    //                cout << "Uwaga " << endl;
+    //            }
+    d775.Load(&visit_ptr->data);
+
+    // This will be plastic or silicon data
+    auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
+
+    for(int n = 0 ; n < d775.GetNchan() ; ++n)
+    {
+        auto wart = d775.GetData(n, 0);
+        if(wart > 0)
+        {
+            //                    cout << "775 for channel " << n
+            //                         << " there is a data: " << wart << endl;
+
+            if(current_board.Size() == 0)
+            {
+                //static int licznik = 0;
+                //if( (++licznik % 100) == 0)
+                cout << "For signals coming from v775 "
+                     << visit_ptr->name
+                     << " - the plastic/silicon lookup table "
+                     << " is empty "
+                     << endl;
+                continue;
+            }
+
+
+            auto branch = current_board.FindChannel(n);
+            static int licznik;
+            if(branch.Size() != 1)
+            {
+                if( (++licznik % 500) == 0 )
+                    cout << "[A] Signal from the v775, " << visit_ptr->name << ", channel "
+                         << n
+                         << " this entry is "<< (branch.Size() )
+                         << " times mentioned in a plastic/silicon lookup table "
+                            " (so this signal is ignored) "
+                         << endl;
+
+                continue;
+            }
+            // distributing to the event
+            // cout << "v775 Kanal " << n << " wartosc " << wart << endl;
+            //                    auto c =
+            // branch.Print(); //   FindID()
+            //                            const LTRecord* const *array;
+            // auto array = branch[0];  //.GetArray();
+            // auto id = array   ->GetID();
+
+            auto id  = current_board.FindChannel(n)[0]->GetID();
+
+            //                    if(id != id_plastic){
+            //                        cout << "Roznica nie powinna sie zdarzyc" << endl;
+            //                    }
+            //                    int id_plastic = current_board[n]->GetID();
+
+
+            //                    cout << "Plastic data by TDC. " << visit_ptr->name
+            //                         << " id_plastic "
+            //                         << id_plastic  << "("
+            //                         << (id_plastic/4)
+            //                         << "+"
+            //                         << (id_plastic%4)
+            //                         << "), value = " << wart << endl;
+            //                    if(id_plastic/4 == 6)
+            //                    {
+            //                        cout << "stop" << endl;
+            //                    }
+
+            string branch_name =
+                    current_board.FindChannel(n)[0]->GetBranch();
+            if(branch_name == string("plastic"))
+            {
+                target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
+                //   cout << "to plastic[" <<id << "] goes <--- " << wart << endl;
+
+            }
+            else if(branch_name == string("silicon"))
+            {
+                string variable_name =
+                        current_board.FindChannel(n)[0]-> GetVariable(0);
+                int co = 1;
+                if(variable_name == "time30")co = 1;
+                else if(variable_name == "time80")co = 2;
+
+                target_event->silicon[id][co] = wart;
+                //    cout << "555to silicon[" <<id << "][" << co << "] goes <--- " << wart << endl;
+            }
+
+        }
+    } // endfor
+
+}
+//*****************************************************************************************
+void TIFJEventProcessor::unpack_V879_878(Tvisitcard *visit_ptr)
+{
+
+    //cout << "Wykryty V879, rozpakowuje jako 879, dane z " << visit_ptr->name << endl;
+
+    d879.Load(&visit_ptr->data);
+    // This will be plastic or silicon data
+    auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
+
+    for(int n = 0 ; n < d879.GetNchan() ; ++n)
+    {
+        auto wart = d879.GetData(n, 0);
+        if(wart > 0){
+            // cout << "879 Kanal " << n << " wartosc " << wart << endl;
+            // distributing to the event
+
+            if(current_board.Size() == 0)
+            {
+                //static int licznik = 0;
+                //if( (++licznik % 100) == 0)
+
+                cout << "For signals coming from v879 "
+                     << visit_ptr->name
+                     << " - the plastic/silicon lookup table "
+                     << " is empty "
+                     << endl;
+                continue;
+            }
+
+            auto branch = current_board.FindChannel(n);
+            if(branch.Size() != 1)
+            {
+                cout << "For v879, " << visit_ptr->name << ", channel "
+                     << n
+                     << " is "<< (branch.Size() )
+                     << " times mentioned in a plastic/silicon lookup table "
+                     << endl;
+
+                continue;
+            }
+            // distributing to the event
+
+
+            int id  = current_board.FindChannel(n)[0]->GetID();
+
+            string branch_name =
+                    current_board.FindChannel(n)[0]->GetBranch();
+            if(branch_name == string("plastic"))
+            {
+                target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
+                cout << "?????? to plastic[" <<id << "] goes <--- " << wart << endl;
+
+            }
+            else if(branch_name == string("silicon"))
+            {
+                string variable_name =
+                        current_board.FindChannel(n)[0]->GetVariable(0);
+                int co = 0;
+                if(variable_name == "time30")co = 1;
+                else if(variable_name == "time80")co = 2;
+                else{
+                    cout << "Katstrofa" ;
+                    continue ;
+                }
+
+                target_event->silicon[id][co] = wart;
+
+                //                        if(id > 15)
+                //                        cout << "to silicon[" <<id << "][" << co << "] goes <--- "
+                //                             << wart << endl;
+            }
+
+        } // end if
+    }//end for
+}
+//*****************************************************************************************
+void TIFJEventProcessor::unpack_V785(Tvisitcard *visit_ptr)
+{
+    // cout << "Wykryty V785, z informacja od " << visit_ptr->name<< endl;
+    d785.Load(&visit_ptr->data);
+    auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
+
+    for(int n = 0 ; n < d785.GetNchan() ; ++n)
+    {
+        auto wart = d785.GetData(n, 0);
+        if(wart > 0){
+            // cout << "785 Kanal " << n << " wartosc " << wart << endl;
+            // distributing to the event
+
+            if(current_board.Size() == 0)
+            {
+                //static int licznik = 0;
+                //if( (++licznik % 100) == 0)
+                cout << "For signals coming from v785 "
+                     << visit_ptr->name
+                     << " - the plastic/silicon lookup table "
+                     << " is empty "
+                     << endl;
+                continue;
+            }
+
+
+            auto branch = current_board.FindChannel(n);
+            if(branch.Size() != 1)
+            {
+                cout << "For v785, " << visit_ptr->name << ", channel "
+                     << n
+                     << " is "<< (branch.Size() )
+                     << " times mentioned in a plastic/silicon lookup table "
+                     << endl;
+
+                continue;
+            }
+            // distributing to the event
+            // cout << "v785 Kanal " << n << " wartosc " << wart << endl;
+            //                    auto c =
+            // branch.Print(); //   FindID()
+            //                            const LTRecord* const *array;
+            // auto array = branch[0];  //.GetArray();
+            // auto id = array   ->GetID();
+
+            int id  = current_board.FindChannel(n)[0]->GetID();
+
+
+
+            string branch_name =
+                    current_board.FindChannel(n)[0]->GetBranch();
+            if(branch_name == string("plastic"))
+            {
+                target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
+                cout << "?????? to plastic[" <<id << "] goes <--- " << wart << endl;
+
+            }
+            else if(branch_name == string("silicon"))
+            {
+                string variable_name =
+                        current_board.FindChannel(n)[0]->GetVariable(0);
+                int co = 0;
+                if(variable_name == "amplitude")co = 0;
+                else continue ;
+
+
+                target_event->silicon[id][co] = wart;
+                //cout << "t444o silicon[" <<id << "][" << co << "] goes <--- " << wart << endl;
+            }
+
+        } // endif
+    } // end for
+
+}
+//**********************************************************************************************
+void TIFJEventProcessor::unpack_V830(Tvisitcard *visit_ptr)
+{
+    //            cout << "Wykryty scaler V830 (w danych 'kratta') z danymi nazwanymi: "
+    //                 << visit_ptr->name
+    //                 << endl;
+
+    static unsigned int licznik ;
+    if( !( (++licznik) % 100))
+        cout << "Wykryty scaler V830 z danymi nazwanymi: "
+             << visit_ptr->name
+             << endl;
+
+    d830.Load(&visit_ptr->data);
+
+    // auto current_board = visit_ptr->name;
+    // usually scl0,1,2,3
+    // cout << current_board << endl;
+    int board = visit_ptr->name[3] - '0';
+
+    for(int n = 0 ; n < d830.GetNchan() ; ++n)
+    {
+        auto wart = d830.GetData(n, 0);
+        if(wart > 0){
+            // cout << "d830 Kanal " << n << " wartosc " << wart << endl;
+            // distributing to the event
+
+            int chan = board*32 + n;
+
+            // cout << "Plastic scaler  " << chan << ", value = " << wart << endl;
+            if(chan <KRATTA_NR_OF_PLASTICS )
+                target_event->plastic_scalers[chan] = wart;
+        }
+    }
 }
 
 
-//ClassImp(TIFJEventProcessor)
+// TIFJEventProcessor
+

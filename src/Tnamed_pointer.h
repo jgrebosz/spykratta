@@ -72,12 +72,13 @@ public:
     Tnamed_pointer(const double *p, bool *data_usable, Tincrementer_donnor *det);
 
     // user incrementer can be only 'double'
-    Tnamed_pointer(double *p, bool *data_usable, Tincrementer_donnor *det,Tuser_incrementer* adr):
-        Tnamed_pointer(p, data_usable, det)
+    Tnamed_pointer(double *p, bool *data_usable_arg, Tincrementer_donnor *det,Tuser_incrementer* adr):
+        Tnamed_pointer(p, data_usable_arg, det)
     {
         is_user_def_incrementer = true;
         adr_user_incr = adr;
     }
+
 
     // this function will be used is the user incrementer is using the other user incrementer.
     // if so - during the evalustion time this user incrementer must ask the other to evaluate himself - first;
@@ -99,6 +100,16 @@ public:
     void add_as_ALL(string entry_name, int *p, bool *data_usable, Tincrementer_donnor *det);
     static
     void add_as_ALL(string entry_name, bool *p, bool *data_usable, Tincrementer_donnor *det);
+
+
+	//  NEW !!! NEW !!! NEW !!! NEW !!! NEW !!! NEW !!! NEW !!! NEW !!! NEW !!! NEW !!!
+	static
+	std::string give_incrementer_name(void *ptr);
+	// NEW !!!  NEW !!! NEW !!! NEW !!! NEW !!! NEW !!! NEW !!! NEW !!! NEW !!! NEW !!! NEW !!!
+	static
+	std::string give_ALL_incrementer_name(void *ptr);
+	// ---------------------------------------------------------------------------
+
 
     /** No descriptions */
 

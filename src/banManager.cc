@@ -127,9 +127,9 @@ int banManager::ReadBananas(string filename)
     cout << " --> " << (int)(theGates.size()) << " bananas read successfully from file " << filename << endl;
 
     // maps bananas
-    for(int ii = 0; ii < (int)(theGates.size()); ii++)
+    for(int ig = 0; ig < (int)(theGates.size()); ig++)
     {
-        aGate = &theGates[ii];
+        aGate = &theGates[ig];
         if(aGate->mapBanana() < 0)
         {
             cout << " --> Could not map banana for detector " << aGate->getNDet() << ", aborting ..." << endl;
@@ -141,17 +141,17 @@ int banManager::ReadBananas(string filename)
     lookup.clear();
     lookup.resize(detDependent * maxDet + 1);
 
-    for(int ii = 0; ii < (int)(lookup.size()); ii++)
+    for(int i = 0; i < (int)(lookup.size()); i++)
     {
-        lookup[ii] = -1;
+        lookup[i] = -1;
     }
 
-    for(int ii = 0; ii < (int)(theGates.size()); ii++)
+    for(int i = 0; i < (int)(theGates.size()); i++)
     {
-        aGate = &theGates[ii];
+        aGate = &theGates[i];
         det = detDependent * aGate->getNDet();
 
-        lookup[det] = ii;
+        lookup[det] = i;
     }
 
     return (int)(theGates.size());

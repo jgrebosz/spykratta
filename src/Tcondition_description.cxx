@@ -40,9 +40,6 @@ void Tcondition_description::read_in_description()
     other_condition_NAND.clear() ;
     other_condition_NOR.clear() ;
 
-
-
-
     string pat_name = "./conditions/" + name ;
     if(pat_name.find(".cnd") == string::npos)
     {
@@ -136,15 +133,15 @@ void Tcondition_description::read_in_description()
         while(plik);
 
 
-        string name ;
+        string fname ;
 
         Tfile_helper::spot_in_file(plik, "other_condition_AND");
         plik >> zjedz >> klamra ; // "{"
         do
         {
-            plik >> zjedz >> name;
-            if(name == "}" || !plik) break ;
-            other_condition_AND.push_back(name);
+            plik >> zjedz >> fname;
+            if(fname == "}" || !plik) break ;
+            other_condition_AND.push_back(fname);
         }
         while(plik);
 
@@ -152,9 +149,9 @@ void Tcondition_description::read_in_description()
         plik >> zjedz >> klamra ; // "{"
         do
         {
-            plik >> zjedz >> name;
-            if(name == "}" || !plik) break ;
-            other_condition_OR.push_back(name);
+            plik >> zjedz >> fname;
+            if(fname == "}" || !plik) break ;
+            other_condition_OR.push_back(fname);
         }
         while(plik);
 
@@ -162,9 +159,9 @@ void Tcondition_description::read_in_description()
         plik >> zjedz >> klamra ; // "{"
         do
         {
-            plik >> zjedz >> name;
-            if(name == "}" || !plik) break ;
-            other_condition_NAND.push_back(name);
+            plik >> zjedz >> fname;
+            if(fname == "}" || !plik) break ;
+            other_condition_NAND.push_back(fname);
         }
         while(plik);
 
@@ -172,9 +169,9 @@ void Tcondition_description::read_in_description()
         plik >> zjedz >> klamra ; // "{"
         do
         {
-            plik >> zjedz >> name;
-            if(name == "}" || !plik) break ;
-            other_condition_NOR.push_back(name);
+            plik >> zjedz >> fname;
+            if(fname == "}" || !plik) break ;
+            other_condition_NOR.push_back(fname);
         }
         while(plik);
 

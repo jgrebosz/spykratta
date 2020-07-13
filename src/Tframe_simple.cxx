@@ -25,7 +25,6 @@ void Tframe_simple::create_my_spectra()
     //-----------
     string name = name_of_this_element + "_signal_raw"  ;
     spec_signal_raw = new spectrum_1D(name,
-                                      name,
                                       1000, 0, 2000,
                                       folder);
     frs_spectra_ptr->push_back(spec_signal_raw) ;
@@ -60,7 +59,7 @@ void Tframe_simple::analyse_current_event()
 
 }
 //**************************************************************************
-void  Tframe_simple::make_preloop_action(ifstream & s)  // read the calibration factors, gates
+void  Tframe_simple::make_preloop_action(ifstream & /*s*/)  // read the calibration factors, gates
 {
 
     cout << "Reading the calibration for " << name_of_this_element << endl ;

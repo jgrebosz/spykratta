@@ -23,6 +23,7 @@
 #include "TIFJCalibratedEvent.h"
 //#include "Go4Analysis/TGo4Analysis.h"
 #include "TIFJAnalysis.h"
+extern TIFJAnalysis *  RisingAnalysis_ptr ;
 
 
 //******************************************
@@ -59,8 +60,8 @@ istream & zjedz(istream & plik)
 }
 /**************************************************************************/
 //**************************************************************************
-TIFJCalibrateProcessor::TIFJCalibrateProcessor(string  name)
-    : TjurekAbstractEventProcessor(name)
+TIFJCalibrateProcessor::TIFJCalibrateProcessor(string  name_arg)
+    : TjurekAbstractEventProcessor(name_arg)
 {
 //   TRACE((14,"TIFJCalibrateProcessor::TIFJCalibrateProcessor(string)",
 //          __LINE__, __FILE__));
@@ -106,7 +107,7 @@ TIFJCalibrateProcessor::~TIFJCalibrateProcessor()
 // working on every event
 //***********************************************************************
 //***********************************************************************
-void TIFJCalibrateProcessor::BuildCalibratedEvent(TIFJCalibratedEvent* target)
+void TIFJCalibrateProcessor::BuildCalibratedEvent(TIFJCalibratedEvent* /*target*/)
 {
 //   TRACE((11,"TIFJCalibrateProcessor::TIFJCalibrateProcessor(Int_t)",
 //          __LINE__, __FILE__));

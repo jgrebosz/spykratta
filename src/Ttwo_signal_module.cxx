@@ -34,7 +34,6 @@ void Ttwo_signal_module::create_my_spectra()
     //-----------
     string name = name_of_this_element + "_" + first_txt + "_raw"  ;
     spec_first = new spectrum_1D(name,
-                                 name,
                                  8191, 1, 8192,
                                  folder);
     frs_spectra_ptr->push_back(spec_first) ;
@@ -42,7 +41,6 @@ void Ttwo_signal_module::create_my_spectra()
     //-----------
     name = name_of_this_element + "_" + second_txt  + "_raw";
     spec_second = new spectrum_1D(name,
-                                  name,
                                   8191, 1, 8192,
                                   folder);
     frs_spectra_ptr->push_back(spec_second) ;
@@ -72,7 +70,7 @@ void Ttwo_signal_module::analyse_current_event()
 }
 //**************************************************************
 // read the calibration factors, gates
-void  Ttwo_signal_module::make_preloop_action(ifstream & s)
+void  Ttwo_signal_module::make_preloop_action(ifstream & /*s*/)
 {
 
 

@@ -74,7 +74,7 @@ protected:
 
 
 public:
-    TH1(const char *name_, const char *title, int nbins, double xlow, double xup)
+    TH1(const char *name_, int nbins, double xlow, double xup)
         : name(name_)
     {
         if(nbins <= 0)
@@ -99,6 +99,7 @@ public:
     //        virtual int Fill ( int x_value, int y_value );
     virtual int Fill(double x_value, double weight);
     //     virtual int SetBinContent ( int x, int y, int co );
+    virtual     int  Fill(double x, double y, int value) { return -1;}
     virtual  void Reset()
     {
 //         cout << "Empty f. TH1::Reset()   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
@@ -185,16 +186,16 @@ public:
     {
         return fZaxis.GetNbins();
     }
-    Int_t BufferEmpty(Int_t action = 0);
+    //Int_t BufferEmpty(Int_t action = 0);
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class  TH1I : public TH1
 {
 public:
-    TH1I(const char *name_, const char *title, int nbins, double xlow, double xup)
+    TH1I(const char *name_, int nbins, double xlow, double xup)
         :
-        TH1(name_, title, nbins, xlow, xup)
+        TH1(name_, nbins, xlow, xup)
     {
         fDimension   = 1;
         fArray = new double[fNcells];
@@ -212,10 +213,10 @@ public:
     {
 //         cout << "f. TH1I::Reset()" << endl;
         // zeroing
-        memset(fArray, 0, fNcells * sizeof(double));
+        memset(fArray, 0, (unsigned int) fNcells * sizeof(double));
     }
     //______________________________________________________________________________
-    int GetBinContent(int bin)    // const
+    int GetBinContent(int bin)    // const  // Note: this will hide GetBinContent(int, int) !
     {
         // see convention for numbering bins in TH1::GetBin
         //        if (fBuffer) ((TH1I*)this)->BufferEmpty();
@@ -260,10 +261,10 @@ class  TH2I : public TH1
 {
 public:
     //_______________________
-    TH2I(const char *name, const char *title,
+    TH2I(const char *name_arg,
          int nbinsx, double xlow, double xup,
          int nbinsy, double ylow, double yup)
-        : TH1(name, title, nbinsx, xlow, xup)
+        : TH1(name_arg, nbinsx, xlow, xup)
     {
         // see comments in the TH1 base class constructors
 //         cout << "Ctor  TH2I " << endl;
@@ -330,62 +331,8 @@ public:
     }
 
     //********************************************************************
-    int  Fill(double x, double y)
-    {
-        //cout << "2::Fill(double x, double y) " << endl;
-
-        // recalculate x and y to know which bin it is
-
-        //*-*-*-*-*-*-*-*-*-*-*Increment cell defined by x,y by 1*-*-*-*-*-*-*-*-*-*
-        //*-*                  ==================================
-        //*-*
-        //*-* if x or/and y is less than the low-edge of the corresponding axis first bin,
-        //*-*   the Underflow cell is incremented.
-        //*-* if x or/and y is greater than the upper edge of corresponding axis last bin,
-        //*-*   the Overflow cell is incremented.
-        //*-*
-        //*-* If the storage of the sum of squares of weights has been triggered,
-        //*-* via the function Sumw2, then the sum of the squares of weights is incremented
-        //*-* by 1 in the cell corresponding to x,y.
-        //*-*
-        //*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
-
-        //if (fBuffer) return BufferFill(x,y,1);
-
-        //    Int_t binx, biny, bin;
-        //    fEntries++;
-        int binx = fXaxis.FindBin(x);
-        int biny = fYaxis.FindBin(y);
-        int bin  = biny * (fXaxis.GetNbins() + 2) + binx;
-        if(flag_talking_histograms)
-        {
-            cout << "Before incrementation , binx = "
-                 << binx
-                 << ", biny = " << biny
-                 << ", bin = " << bin << endl;
-        }
-        AddBinContent(bin);
-        //    if (fSumw2.fN) ++fSumw2.fArray[bin];
-        if(binx == 0 || binx > fXaxis.GetNbins())
-        {
-            //       if (!fgStatOverflows)
-            return -1;
-        }
-        if(biny == 0 || biny > fYaxis.GetNbins())
-        {
-            //       if (!fgStatOverflows)
-            return -1;
-        }
-        //    ++fTsumw;
-        //    ++fTsumw2;
-        //    fTsumwx  += x;
-        //    fTsumwx2 += x*x;
-        //    fTsumwy  += y;
-        //    fTsumwy2 += y*y;
-        //    fTsumwxy += x*y;
-        return bin;
-
-    }
+    int  Fill(double x, double y);
+    int  Fill(double x, double y, int value);
 };
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -86,7 +86,7 @@ int TIFJEvent::Fill()
     return rev;
 }
 //******************************************************************************
-void  TIFJEvent::Clear(string t)
+void  TIFJEvent::Clear(string /*t*/)
 {
 //     TRACE ( ( 11,"TIFJEvent::Clear()",__LINE__, __FILE__ ) );
 
@@ -112,7 +112,7 @@ void  TIFJEvent::Clear(string t)
 
 //***********************************************************************************
        // not used anymore, as the tree for hect_kratta is available
-void  TIFJEvent::save_as_semitree(string name)
+void  TIFJEvent::save_as_semitree(string name_)
 {
     static bool file_is_open { false};;
 
@@ -128,39 +128,27 @@ void  TIFJEvent::save_as_semitree(string name)
 // 
 //         }
         //---------------------
-        plik.open(name+"-bin", ios::binary);
+        plik.open(name_+"-bin", ios::binary);
         if(!plik)
         {
-            cout << "TIFJEvent::save_as_semitree --> error while openinig the file " << name << endl;
+            cout << "TIFJEvent::save_as_semitree --> error while openinig the file " << name_ << endl;
             exit(22);
         }
         file_is_open = true;
     }
 
 #ifdef HECTOR_PRESENT
-
     // data for Hector
 //     int hector_tdc[32];
 //     int hector_adc[32];
-
     plik.write( (char*) hector_tdc, sizeof(hector_tdc) );
     plik.write( (char*) hector_adc, sizeof(hector_tdc) );
-
 #endif
-
-
 #ifdef KRATTA_PRESENT
 //     int kratta[KRATTA_NR_OF_CRYSTALS][3+3+3] ;   // 0,1,2 - signals, 3,4,5 - pedestals, 6,7,8 - times
 
    plik.write( (char*) kratta, sizeof(kratta) );
 #endif
-
-
-
-
-
-
-
 }
 
 

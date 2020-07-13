@@ -5,7 +5,7 @@
 #include "Tcrystal.h"
 #include "Tincrementer_donnor.h"
 #include <string>
-istream & zjedz(istream & plik);
+//istream & zjedz(istream & plik);
 //////////////////////////////////////////////////////////////////////////////
 class Tcluster : public Tincrementer_donnor
 {

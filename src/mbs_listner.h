@@ -54,9 +54,12 @@ public:
     
     int subtype() { return subevent_header_ptr->i_subtype; }
     int type() { return subevent_header_ptr->i_type; }
+    int procid() { return subevent_header_ptr->i_procid; }
+    char control() { return subevent_header_ptr->h_control; }
     uint32_t* data() { return event_data_ptr; }
     int32_t length() { return length_datawords; ; }
     int give_event_nr() { return event_nr;}
+    int give_how_many_subs() { return how_many_subs; }
 };
 
 #endif // MBS_LISTNER_H

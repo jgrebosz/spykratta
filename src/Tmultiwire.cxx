@@ -63,14 +63,14 @@ void Tmultiwire::create_my_spectra()
 
     //-----------
     string name = name_of_this_element + "_left_raw"  ;
-    spec_left = new spectrum_1D(name, name,
+    spec_left = new spectrum_1D(name,
                                 4095, 1, 4096,
                                 folder, "", noraw);
     frs_spectra_ptr->push_back(spec_left) ;
 
     //-----------
     name = name_of_this_element + "_right_raw"  ;
-    spec_right = new spectrum_1D(name, name,
+    spec_right = new spectrum_1D(name,
                                  4095, 1, 4096,
                                  folder, "", noraw);
     frs_spectra_ptr->push_back(spec_right) ;
@@ -78,14 +78,14 @@ void Tmultiwire::create_my_spectra()
     //-----------
 
     name = name_of_this_element + "_up_raw"  ;
-    spec_up = new spectrum_1D(name, name,
+    spec_up = new spectrum_1D(name,
                               4095, 1, 4096,
                               folder, "", noraw);
     frs_spectra_ptr->push_back(spec_up) ;
 
     //-----------
     name = name_of_this_element + "_down_raw"  ;
-    spec_down = new spectrum_1D(name, name,
+    spec_down = new spectrum_1D(name,
                                 4095, 1, 4096,
                                 folder, "", noraw);
     frs_spectra_ptr->push_back(spec_down) ;
@@ -93,7 +93,7 @@ void Tmultiwire::create_my_spectra()
 
     //-----------
     name = name_of_this_element + "_anode_raw"  ;
-    spec_anode = new spectrum_1D(name, name,
+    spec_anode = new spectrum_1D(name,
                                  4095, 1, 4096,
                                  folder, "", noraw);
     frs_spectra_ptr->push_back(spec_anode) ;
@@ -106,7 +106,6 @@ void Tmultiwire::create_my_spectra()
     // X------------------------------------
     name = name_of_this_element + "_posX"  ;
     spec_x = new spectrum_1D(name,
-                             name,
                              400, -150, 150,
                              folder, "when the gate on sumX is passed", name_of_this_element + "_x_when_ok");
     frs_spectra_ptr->push_back(spec_x) ;
@@ -116,7 +115,6 @@ void Tmultiwire::create_my_spectra()
     name =  name_of_this_element + "_sumX"  ;
 
     spec_x_sum = new spectrum_1D(name,
-                                 name,
                                  16000, -8000, 8000,
                                  folder,
                                  "GATE is for posX", noinc);
@@ -128,7 +126,6 @@ void Tmultiwire::create_my_spectra()
     // Y------------------------------------
     name =  name_of_this_element + "_posY"  ;
     spec_y = new spectrum_1D(name,
-                             name,
                              400, -150, 150,
                              folder,
                              "when the gate on sumY is passed",
@@ -140,7 +137,6 @@ void Tmultiwire::create_my_spectra()
     name =  name_of_this_element + "_sumY"  ;
 
     spec_y_sum = new spectrum_1D(name,
-                                 name,
                                  16000, -8000, 8000, //    8192, 0, 8192,
                                  folder,
                                  "GATE is for posY", noinc);
@@ -154,7 +150,6 @@ void Tmultiwire::create_my_spectra()
     name =  name_of_this_element + "_xy"  ;
 
     spec_xy = new spectrum_2D(name,
-                              name,
                               400, -150, 150,
                               400, -150, 150,
                               folder, "",
@@ -170,7 +165,6 @@ void Tmultiwire::create_my_spectra()
 
     name = name_of_this_element + "_x_sum_ns"  ;
     spec_x_sum_ns = new spectrum_1D(name,
-                                    name,
                                     2400, 0, 2400,
                                     folder, "", noinc);
     frs_spectra_ptr->push_back(spec_x_sum_ns) ;
@@ -179,7 +173,6 @@ void Tmultiwire::create_my_spectra()
 
     name = name_of_this_element + "_y_sum_ns"  ;
     spec_y_sum_ns = new spectrum_1D(name,
-                                    name,
                                     2400, 0, 2400,
                                     folder, "", noinc);
     frs_spectra_ptr->push_back(spec_y_sum_ns) ;
@@ -188,7 +181,6 @@ void Tmultiwire::create_my_spectra()
 
     name = name_of_this_element + "_anode_ns"  ;
     spec_anode_cal = new spectrum_1D(name,
-                                     name,
                                      1200, 0, 1200,
                                      folder, "", noinc);
     frs_spectra_ptr->push_back(spec_anode_cal) ;
@@ -197,7 +189,6 @@ void Tmultiwire::create_my_spectra()
 
     name = name_of_this_element + "_left_ns"  ;
     spec_left_cal = new spectrum_1D(name,
-                                    name,
                                     1200, 0, 1200,
                                     folder, "", noinc);
     frs_spectra_ptr->push_back(spec_left_cal) ;
@@ -206,7 +197,6 @@ void Tmultiwire::create_my_spectra()
 
     name = name_of_this_element + "_right_ns"  ;
     spec_right_cal = new spectrum_1D(name,
-                                     name,
                                      1200, 0, 1200,
                                      folder, "", noinc);
     frs_spectra_ptr->push_back(spec_right_cal) ;
@@ -216,8 +206,7 @@ void Tmultiwire::create_my_spectra()
 
     name = name_of_this_element + "_up_ns"  ;
     spec_up_cal = new spectrum_1D(name,
-                                  name,
-                                  1200, 0, 1200,
+                                  0, 1200,
                                   folder, "", noinc);
     frs_spectra_ptr->push_back(spec_up_cal) ;
 
@@ -227,7 +216,6 @@ void Tmultiwire::create_my_spectra()
 
     name = name_of_this_element + "_down_ns"  ;
     spec_down_cal = new spectrum_1D(name,
-                                    name,
                                     1200, 0, 1200,
                                     folder, "", noinc);
     frs_spectra_ptr->push_back(spec_down_cal) ;
@@ -236,7 +224,6 @@ void Tmultiwire::create_my_spectra()
 
     name = name_of_this_element + "_x_mm_calibrated"  ;
     spec_x_mm = new spectrum_1D(name,
-                                name,
                                 300, -150, 150,
                                 folder, "", noinc);
     frs_spectra_ptr->push_back(spec_x_mm) ;
@@ -246,7 +233,6 @@ void Tmultiwire::create_my_spectra()
 
     name = name_of_this_element + "_y_mm_calibrated"  ;
     spec_y_mm = new spectrum_1D(name,
-                                name,
                                 300, -150, 150,
                                 folder, "", noinc);
     frs_spectra_ptr->push_back(spec_y_mm) ;
@@ -255,7 +241,6 @@ void Tmultiwire::create_my_spectra()
     name =   name_of_this_element + "_xy_mm"  ;
 
     spec_xy_mm = new spectrum_2D(name,
-                                 name,
                                  300, -150, 150,
                                  300, -150, 150,
                                  folder, "", noinc);
