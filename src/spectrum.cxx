@@ -1047,12 +1047,7 @@ void spectrum_2D::read_from_disk()
 }
 
 //***********************************************************************
-/** No descriptions */
-void spectrum_2D::manually_increment_by ( double x, double y, int value )
-{
-    // cout << "Empty function spectrum_2D::manually_increment_by" << endl;
-    ptr_root_spectrum->Fill ( x, y, value );
-}
+
 /** No descriptions */
 double spectrum_1D::give_max_chan_paper()
 {

@@ -18,30 +18,31 @@ make CFLAGS='-g -O0' CXXFLAGS='-g -O0' clean all
 // #include "Go4EventServer/TjurekMbsEvent.h"
 
 #include <iostream> // for test printouts
-#include <iomanip> // for test printouts
+// #include <iomanip> // for test printouts
 #include <sstream>
 #include <algorithm>
 
 using namespace std;
 
-#include "spectrum.h"
+// #include "spectrum.h"
 #include "Tfile_helper.h"
-#include "tsignal_processing.h"
+// #include "tsignal_processing.h"
 
-#include "Trising.h"  // for cluster characters
+// #include "Trising.h"  // for cluster characters
 #include "Thector.h"  // for cluster characters
 
 
-#include "visitcard.h"
-#include "DataDecoder.h"
+// #include "visitcard.h"
+// #include "DataDecoder.h"
 #include "v1724.h"
 #include "v775.h"
 #include "v785.h"
 #include "v878.h"
 #include "v879.h"
 #include "v830.h"
-
 #include "v1730B.h"
+#include "v1190.h"
+#include "v2740.h"
 
 v1730B  d;  // decoder for digitizer
 v775    d775 ("V775");  // decoder for digitizer v775 caen module
@@ -49,11 +50,14 @@ v785    d785 ("V785");  // decoder for digitizer v785 caen module
 v879    d879 ("V879");  // decoder for digitizer v789 caen module
 v1724   d1724; // decoder for module 1724
 v830    d830;
+v1190   d1190("V1190");
+v2740   d2740("V2740");
 
 #include "LTable.h"
 LTable *ltb_kratta;
 LTable *ltb_plastic;
 LTable *ltb_paris;
+LTable *ltb_silicon;
 
 //#include "Tlookup_table_kratta.h"
 #define FOUR_BRANCHES_VERSION   1
@@ -222,23 +226,47 @@ void TIFJEventProcessor::setup_Piotr_Pawlowski_lookup_tables(string data_fname_w
                                                    data_fname_with_path
                                                    );
     ltb_plastic->ReadFile((current_path_for_lookup_table + proper_ltb_file).c_str()); // lookup table
+    ltb_plastic->Print();
+
     // ltb_plastic->ReadFile((current_path_for_lookup_table + "plastic.ltb").c_str()); // lookup table
 
 
 
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // TODO: CZY TO BLAD?- UZYWAMY TU TEGO SAMEGO LTB_PLASTIC CO POWYZEJ !!!!!!!!!!!!!!!
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    // proper_ltb_file = find_proper_lookuptable_name("silicon.ltb",
+    //                                                current_path_for_lookup_table,
+    //                                                data_fname_with_path
+    //                                                );
+
+    // ltb_plastic->ReadFile((current_path_for_lookup_table + proper_ltb_file).c_str()); // lookup table
+
+    //ltb_plastic->ReadFile((current_path_for_lookup_table + "silicon.ltb").c_str()); // lookup table
+
+    // four silicons of Natalia ---------------------------------------------------------------------
+    if(ltb_silicon != nullptr){
+        delete ltb_silicon;
+    }
+    ltb_silicon = new LTable;
     proper_ltb_file = find_proper_lookuptable_name("silicon.ltb",
                                                    current_path_for_lookup_table,
                                                    data_fname_with_path
                                                    );
-    ltb_plastic->ReadFile((current_path_for_lookup_table + proper_ltb_file).c_str()); // lookup table
 
-    //ltb_plastic->ReadFile((current_path_for_lookup_table + "silicon.ltb").c_str()); // lookup table
+    ltb_silicon->ReadFile((current_path_for_lookup_table + proper_ltb_file).c_str()); // lookup table
+    ltb_silicon->Print();
+
 }
 //******************************************************************
 string TIFJEventProcessor::find_proper_lookuptable_name(string ltb_name,
                                                         string current_path_for_lookup_table,
                                                         string data_file_name_with_path)
 {
+
+
+    // cout << "working with " << ltb_name << endl;
     // making a filter
     auto kropka_pos =  ltb_name.rfind(".ltb");
     if(kropka_pos == string::npos)
@@ -249,7 +277,7 @@ string TIFJEventProcessor::find_proper_lookuptable_name(string ltb_name,
     string filter = ltb_name.substr(0, kropka_pos);
 
     // look into current path for all lookuptable of this kind
-    auto vec_ltb_names = FH::find_files_in_directory(current_path_for_lookup_table,filter );
+    auto vec_ltb_names = FH::find_files_in_directory(current_path_for_lookup_table, filter );
     if(vec_ltb_names.size() == 1)
     {
         return vec_ltb_names[0];
@@ -257,6 +285,8 @@ string TIFJEventProcessor::find_proper_lookuptable_name(string ltb_name,
 
     // sort alphabetically
     sort(vec_ltb_names.begin(), vec_ltb_names.end() );
+
+    vec_ltb_names = remove_names_without_extension_ltb(vec_ltb_names);
 
     // extract run numbers from these files (making a map?)
     vector<int>  run_numbers;
@@ -310,6 +340,24 @@ string TIFJEventProcessor::find_proper_lookuptable_name(string ltb_name,
     return found_ltb_name;
 }
 //******************************************************************
+vector<string> TIFJEventProcessor::remove_names_without_extension_ltb(vector<string> v)
+{
+    vector<string> vnew;
+    for( size_t n = 0 ;  n < v.size() ; ++n )
+    {
+        //        cout<< v[n] << " pracujemy... z " << v[n] << endl;
+        //        cout<< v[n].substr(v[n].size() - 4) << " substring " << v[n] << endl;
+
+        if(v[n].substr(v[n].size() - 4) == ".ltb" )
+        {
+            vnew.push_back( v[n]);
+        }else {
+            //            cout << "nazwa opuszczona" << endl;
+        }
+    }
+    return vnew;
+}
+//******************************************************************
 TIFJEventProcessor::~TIFJEventProcessor()
 {
     //     TRACE((14,"TIFJEventProcessor::~TIFJEventProcessor()",
@@ -323,7 +371,7 @@ TIFJEventProcessor::~TIFJEventProcessor()
 void TIFJEventProcessor::BuildEbEvent(
         TGo4EventSourceParameter *source_of_events, TIFJEvent *target)
 {
-    //cout << "Function BuildEbEvent================================" << endl;
+    //    cout << "Function BuildEbEvent================================" << endl;
 
     source_of_events_ptr = source_of_events;
     target_event = target; // to remember for other private functions
@@ -453,7 +501,7 @@ bool  TIFJEventProcessor::unpack_kratta_hector_event(const_daq_word_t *  /*data*
             else if(mbs.control() == 2){
                 //                if(length > 0)
                 //                    cout << "JEST" << endl;
-                unpack_ccb_non_kratta_z_metryczkami(( (uint32_t *) data), true, length);
+                unpack_ccb_non_kratta_z_metryczkami(( (uint32_t *) data), true, length); // true means - it is a real HECTOR
             }
         }
         else if(mbs.subtype() == 34 && mbs.type() == 1) {
@@ -5375,7 +5423,7 @@ void TIFJEventProcessor::read_frsUser_lookup_table()
  comes together as one event (with subevent parts) */
 bool TIFJEventProcessor::unpack_the_CCB_event()
 {
-//    cout << "===== function :unpack_the_CCB_event() " << counter_put << endl;
+    //    cout << "===== function :unpack_the_CCB_event() " << counter_put << endl;
 
     static time_t last = 0;
     time_t now = time(nullptr);
@@ -5751,8 +5799,8 @@ void TIFJEventProcessor::unpack_trigger_pattern(int /*event*/, int /*subevent*/,
 // for a combination  (i_setyp == 36 && i_sestyp==1) - it is CAEN V1724
 void TIFJEventProcessor::unpack_caen_v1724_kratta_digitizer(int /*event*/, int /*subevent*/, uint32_t *p_se, int length)
 {
-//    cout << "\n=============================\n"
-//         << __func__  << ",  subevent length = "<< length << endl;
+    // cout << "\n=============================\n"
+    //      << __func__  << ",  subevent length = "<< length << endl;
 
     //constexpr int how_many_chan_for_pedestal = 30; // 50;
 
@@ -6008,10 +6056,10 @@ void TIFJEventProcessor::unpack_caen_v1724_kratta_digitizer(int /*event*/, int /
                             continue;
                         }
                         int id_plastic = current_board[ch]->GetID();
-                        // cout << "v775 Kanal " << ch << " wartosc " << wart << endl;
+                        cout << "v775 Kanal " << ch << " wartosc " << wart << endl;
                         // distributing to the event
 
-                        // cout << "Plastic data. id_plastic " << id_plastic << ", value = " << wart << endl;
+                        cout << "Plastic data. id_plastic " << id_plastic << ", value = " << wart << endl;
                         target_event->plastic[id_plastic] = wart;     // time goes to 0. If in future we have energy, it will go to 1
 
                     }
@@ -6025,35 +6073,6 @@ void TIFJEventProcessor::unpack_caen_v1724_kratta_digitizer(int /*event*/, int /
         else if(visit_ptr->type == string("V830"))
         {
             unpack_V830(visit_ptr);
-#if 0
-            static unsigned int licznik ;
-            if( !( (++licznik) % 100))
-                cout << "Wykryty scaler V830 z danymi nazwanymi: "
-                     << visit_ptr->name
-                     << endl;
-            //auto current_board = scaler.FindBoard(visit_ptr->name);
-            d830.Load(&visit_ptr->data);
-
-            //auto current_board = visit_ptr->name;
-            // usually scl0,1,2,3
-            // cout << current_board << endl;
-            int board = visit_ptr->name[3] - '0';
-
-            for(int n = 0 ; n < d830.GetNchan() ; ++n)
-            {
-                auto wart = d830.GetData(n, 0);
-                if(wart > 0){
-                    // cout << "d830 Kanal " << n << " wartosc " << wart << endl;
-                    // distributing to the event
-
-                    int chan = board*32 + n;
-
-                    // cout << "Plastic scaler  " << chan << ", value = " << wart << endl;
-                    if(chan <KRATTA_NR_OF_PLASTICS )
-                        target_event->plastic_scalers[chan] = wart;
-                }
-            }
-#endif
             nr_of_analysed_words += how_many_words;
             continue;
 
@@ -6062,106 +6081,6 @@ void TIFJEventProcessor::unpack_caen_v1724_kratta_digitizer(int /*event*/, int /
         {
 
             unpack_V775(visit_ptr);
-#if 0
-            //            cout << "\nWykryta wizytowka V775 o name "
-            //                 << visit_ptr->name << endl;
-
-            //            if(visit_ptr->name == string("tdc4"))
-            //            {
-
-            //                cout << "Uwaga " << endl;
-            //            }
-            d775.Load(&visit_ptr->data);
-
-            // This will be plastic or silicon data
-            auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
-
-            for(int n = 0 ; n < d775.GetNchan() ; ++n)
-            {
-                auto wart = d775.GetData(n, 0);
-                if(wart > 0)
-                {
-                    //                    cout << "775 for channel " << n
-                    //                         << " there is a data: " << wart << endl;
-
-                    if(current_board.Size() == 0)
-                    {
-                        //static int licznik = 0;
-                        //if( (++licznik % 100) == 0)
-                        cout << "For signals coming from v775 "
-                             << visit_ptr->name
-                             << " - the plastic/silicon lookup table "
-                             << " is empty "
-                             << endl;
-                        continue;
-                    }
-
-
-                    auto branch = current_board.FindChannel(n);
-                    static int licznik;
-                    if(branch.Size() != 1)
-                    {
-                        if( (++licznik % 500) == 0 )
-                            cout << "[A] Signal from the v775, " << visit_ptr->name << ", channel "
-                                 << n
-                                 << " this entry is "<< (branch.Size() )
-                                 << " times mentioned in a plastic/silicon lookup table "
-                                    " (so this signal is ignored) "
-                                 << endl;
-
-                        continue;
-                    }
-                    // distributing to the event
-                    // cout << "v775 Kanal " << n << " wartosc " << wart << endl;
-                    //                    auto c =
-                    // branch.Print(); //   FindID()
-                    //                            const LTRecord* const *array;
-                    // auto array = branch[0];  //.GetArray();
-                    // auto id = array   ->GetID();
-
-                    auto id  = current_board.FindChannel(n)[0]->GetID();
-
-                    //                    if(id != id_plastic){
-                    //                        cout << "Roznica nie powinna sie zdarzyc" << endl;
-                    //                    }
-                    //                    int id_plastic = current_board[n]->GetID();
-
-
-                    //                    cout << "Plastic data by TDC. " << visit_ptr->name
-                    //                         << " id_plastic "
-                    //                         << id_plastic  << "("
-                    //                         << (id_plastic/4)
-                    //                         << "+"
-                    //                         << (id_plastic%4)
-                    //                         << "), value = " << wart << endl;
-                    //                    if(id_plastic/4 == 6)
-                    //                    {
-                    //                        cout << "stop" << endl;
-                    //                    }
-
-                    string branch_name =
-                            current_board.FindChannel(n)[0]->GetBranch();
-                    if(branch_name == string("plastic"))
-                    {
-                        target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
-                        //   cout << "to plastic[" <<id << "] goes <--- " << wart << endl;
-
-                    }
-                    else if(branch_name == string("silicon"))
-                    {
-                        string variable_name =
-                                current_board.FindChannel(n)[0]-> GetVariable(0);
-                        int co = 1;
-                        if(variable_name == "time30")co = 1;
-                        else if(variable_name == "time80")co = 2;
-
-                        target_event->silicon[id][co] = wart;
-                        //    cout << "555to silicon[" <<id << "][" << co << "] goes <--- " << wart << endl;
-                    }
-
-                }
-            }  // endfor
-#endif
 
             nr_of_analysed_words += how_many_words;   // UWAGA!!!!!1
             continue;
@@ -6171,79 +6090,6 @@ void TIFJEventProcessor::unpack_caen_v1724_kratta_digitizer(int /*event*/, int /
         {
 
             unpack_V879_878(visit_ptr);
-#if 0
-            //cout << "Wykryty V879, rozpakowuje jako 879, dane z " << visit_ptr->name << endl;
-
-            d879.Load(&visit_ptr->data);
-            // This will be plastic or silicon data
-            auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
-
-            for(int n = 0 ; n < d879.GetNchan() ; ++n)
-            {
-                auto wart = d879.GetData(n, 0);
-                if(wart > 0){
-                    // cout << "879 Kanal " << n << " wartosc " << wart << endl;
-                    // distributing to the event
-
-                    if(current_board.Size() == 0)
-                    {
-                        //static int licznik = 0;
-                        //if( (++licznik % 100) == 0)
-
-                        cout << "For signals coming from v879 "
-                             << visit_ptr->name
-                             << " - the plastic/silicon lookup table "
-                             << " is empty "
-                             << endl;
-                        continue;
-                    }
-
-                    auto branch = current_board.FindChannel(n);
-                    if(branch.Size() != 1)
-                    {
-                        cout << "For v879, " << visit_ptr->name << ", channel "
-                             << n
-                             << " is "<< (branch.Size() )
-                             << " times mentioned in a plastic/silicon lookup table "
-                             << endl;
-
-                        continue;
-                    }
-                    // distributing to the event
-
-
-                    int id  = current_board.FindChannel(n)[0]->GetID();
-
-                    string branch_name =
-                            current_board.FindChannel(n)[0]->GetBranch();
-                    if(branch_name == string("plastic"))
-                    {
-                        target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
-                        cout << "?????? to plastic[" <<id << "] goes <--- " << wart << endl;
-
-                    }
-                    else if(branch_name == string("silicon"))
-                    {
-                        string variable_name =
-                                current_board.FindChannel(n)[0]->GetVariable(0);
-                        int co = 0;
-                        if(variable_name == "time30")co = 1;
-                        else if(variable_name == "time80")co = 2;
-                        else{
-                            cout << "Katstrofa" ;
-                            continue ;
-                        }
-
-                        target_event->silicon[id][co] = wart;
-
-                        //                        if(id > 15)
-                        //                        cout << "to silicon[" <<id << "][" << co << "] goes <--- "
-                        //                             << wart << endl;
-                    }
-
-                } // end if
-            }//end for
-#endif // 0
 
             nr_of_analysed_words += how_many_words;
             continue;
@@ -6251,99 +6097,36 @@ void TIFJEventProcessor::unpack_caen_v1724_kratta_digitizer(int /*event*/, int /
         else if(visit_ptr->type == string("V785"))
         {
             unpack_V785(visit_ptr);
-#if 0
-            // cout << "Wykryty V785, z informacja od " << visit_ptr->name<< endl;
-            d785.Load(&visit_ptr->data);
-            auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
-
-            for(int n = 0 ; n < d785.GetNchan() ; ++n)
-            {
-                auto wart = d785.GetData(n, 0);
-                if(wart > 0){
-                    // cout << "785 Kanal " << n << " wartosc " << wart << endl;
-                    // distributing to the event
-
-                    if(current_board.Size() == 0)
-                    {
-                        //static int licznik = 0;
-                        //if( (++licznik % 100) == 0)
-                        cout << "For signals coming from v785 "
-                             << visit_ptr->name
-                             << " - the plastic/silicon lookup table "
-                             << " is empty "
-                             << endl;
-                        continue;
-                    }
-
-
-                    auto branch = current_board.FindChannel(n);
-                    if(branch.Size() != 1)
-                    {
-                        cout << "For v785, " << visit_ptr->name << ", channel "
-                             << n
-                             << " is "<< (branch.Size() )
-                             << " times mentioned in a plastic/silicon lookup table "
-                             << endl;
-
-                        continue;
-                    }
-                    // distributing to the event
-                    // cout << "v785 Kanal " << n << " wartosc " << wart << endl;
-                    //                    auto c =
-                    // branch.Print(); //   FindID()
-                    //                            const LTRecord* const *array;
-                    // auto array = branch[0];  //.GetArray();
-                    // auto id = array   ->GetID();
-
-                    int id  = current_board.FindChannel(n)[0]->GetID();
-
-
-
-                    string branch_name =
-                            current_board.FindChannel(n)[0]->GetBranch();
-                    if(branch_name == string("plastic"))
-                    {
-                        target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
-                        cout << "?????? to plastic[" <<id << "] goes <--- " << wart << endl;
-
-                    }
-                    else if(branch_name == string("silicon"))
-                    {
-                        string variable_name =
-                                current_board.FindChannel(n)[0]->GetVariable(0);
-                        int co = 0;
-                        if(variable_name == "amplitude")co = 0;
-                        else continue ;
-
-
-                        target_event->silicon[id][co] = wart;
-                        //cout << "t444o silicon[" <<id << "][" << co << "] goes <--- " << wart << endl;
-                    }
-
-
-
-
-                } // endif
-            } // end for
-#endif
 
             nr_of_analysed_words += how_many_words;
             continue;
 
         }
 
+        else if(visit_ptr->type == string("V1190"))
+        {
+            // cout << "raz" << endl;
+            unpack_V1190(visit_ptr);
 
+            nr_of_analysed_words += how_many_words;
+            continue;
+
+        }
         else if (visit_ptr->type == string("RATE"))
         {
             // ignored visitin card "RATE"
         }
         else {
+            static int licznik = 0 ;
+            if(!(++licznik % 1000 ))
+            {
 
-            cout << __func__ << "Unexpected visiting card "
-                 << visit_ptr->type << "--->   , origin: " << visit_ptr->name
+                cout << __func__ << " Warning: Unexpected visiting card "
+                     << visit_ptr->type << "--->   , origin: " << visit_ptr->name
 
-                 << " line:" << __LINE__ << ")"  << endl;
-
+                        // << " line:" << __LINE__
+                     << ")"  << endl;
+            }
         }
 
 
@@ -6390,13 +6173,13 @@ void TIFJEventProcessor::unpack_36_9494(int /*event*/, int /*subevent*/, uint32_
 //*****************************************************************************
 void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_block, bool real_hector, int length)
 {
-    // cout << __func__ << (real_hector ? ": HECTOR" : ": Phoswich") << endl;
+    // cout << __func__ << (real_hector ? ": HECTOR" : ": Phoswich") << ",  length = " << length << endl;
 
-#define VISITING_CARD 1    // 0 - no, old style;  1 - przskok, moje rozkowodanie, 2 - pełny sposób Piotra (nie dziala?)
+    //#define VISITING_CARD 1    // 0 - no, old style;  1 - przskok, moje rozkowodanie,
 
-#if VISITING_CARD == 0
-    // deleted now
-#elif VISITING_CARD == 1
+
+
+
 
     //    struct Tvisitcard
     //    {
@@ -6419,7 +6202,7 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
 
     for(int nr_visiting = 0 ; nr_of_analysed_words < length; ++nr_visiting)
     {
-        //         cout << "Visitcard nr " << nr_visiting << endl;
+        // cout << "Visitcard nr " << nr_visiting << endl;
         //        if(nr_visiting > 0)
         //        {
         //            cout << "nr_of_analysed_words = "
@@ -6432,9 +6215,10 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
         Tvisitcard * visit_ptr = ( Tvisitcard *)(data_block + nr_of_analysed_words);
         uint32_t how_many_words = visit_ptr->size;
 
-        //        cout << "Info from visitcard, Type = " << visit_ptr->type
-        //             << ", name = " << visit_ptr->name
-        //             << endl;
+        // cout << "Info from visitcard, Type = " << visit_ptr->type
+        //      << ", name = " << visit_ptr->name
+        //      << ",  how_many_words = " << how_many_words
+        //      << endl;
 
         //                cout << "Size of this visit block = "
         //                     << how_many_words
@@ -6447,7 +6231,7 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
 
         if(visit_ptr->type == string("V1730B"))   // digitizer dla non-kratta signals
         {
-            //cout << "Wykryte dane z digitizera V1730B" << endl;
+            // cout << "Wykryte dane z digitizera V1730B" << endl;
 
             //                        struct Tdigitizer
             //                        {
@@ -6542,8 +6326,6 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
             } else
                 for(int n = 0 ; n < d.GetNchan() ; ++n)
                 {
-
-
                     if(d.Empty(n))
                         continue;
 
@@ -6552,10 +6334,11 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
                     if(branch.Size() != 1)
                     {
                         if( (++licznik % 5000) == 0 )
-                            cout << "[B] For v775, " << visit_ptr->name << ", channel "
+                            cout << "[B] For block v775, " << visit_ptr->name << ", a channel "
                                  << n
                                  << " is "<< (branch.Size() )
                                  << " times mentioned in a the lookup table "
+                                 << ltb_paris->name
                                  << endl;
 
                         continue;
@@ -6567,7 +6350,7 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
                     // later form other channels of time.
 
                     string branch_name = current_board.FindChannel(n)[0]->GetBranch();
-                    //cout << "nazwa branchu = " << branch_name << endl;
+                    // cout << "nazwa branchu = " << branch_name << endl;
 
                     bool flag_reference_time = false;
                     if( branch_name == string("ref"))
@@ -6664,7 +6447,7 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
 
                 } // for n
 
-#else
+#else    // PARIS_NORMALY__OTHERWISE_PLASTIC
             //@grupa3_25_02_85MeV.txt
 
 
@@ -6723,12 +6506,12 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
                         // cout << "v775 Kanal " << n << " wartosc " << wart << endl;
                         // distributing to the event
 
-                        //                                            cout << "      Plastic data by DIG. id_plastic "
-                        //                                                 << id_plastic  << "("
-                        //                                                 << (id_plastic/4)
-                        //                                                 << "+"
-                        //                                                 << (id_plastic%4)
-                        //                                                 << "), value = " << wart << endl;
+                        cout << "      Plastic data by DIG. id_plastic "
+                             << id_plastic  << "("
+                             << (id_plastic/4)
+                             << "+"
+                             << (id_plastic%4)
+                             << "), value = " << wart << endl;
                         target_event->plastic[id_plastic] = wart;     // time goes to 0. If in future we have energy, it will go to 1
                     }
                 }
@@ -6744,106 +6527,6 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
         {
 
             unpack_V775(visit_ptr);
-#if 0
-            //            cout << "\nWykryta wizytowka V775 o name "
-            //                 << visit_ptr->name << endl;
-
-            //            if(visit_ptr->name == string("tdc4"))
-            //            {
-
-            //                cout << "Uwaga " << endl;
-            //            }
-            d775.Load(&visit_ptr->data);
-
-            // This will be plastic or silicon data
-            auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
-
-            for(int n = 0 ; n < d775.GetNchan() ; ++n)
-            {
-                auto wart = d775.GetData(n, 0);
-                if(wart > 0)
-                {
-                    //                    cout << "775 for channel " << n
-                    //                         << " there is a data: " << wart << endl;
-
-                    if(current_board.Size() == 0)
-                    {
-                        //static int licznik = 0;
-                        //if( (++licznik % 100) == 0)
-                        cout << "For signals coming from v775 "
-                             << visit_ptr->name
-                             << " - the plastic/silicon lookup table "
-                             << " is empty "
-                             << endl;
-                        continue;
-                    }
-
-
-                    auto branch = current_board.FindChannel(n);
-                    static int licznik;
-                    if(branch.Size() != 1)
-                    {
-                        if( (++licznik % 500) == 0 )
-                            cout << "[A] Signal from the v775, " << visit_ptr->name << ", channel "
-                                 << n
-                                 << " this entry is "<< (branch.Size() )
-                                 << " times mentioned in a plastic/silicon lookup table "
-                                    " (so this signal is ignored) "
-                                 << endl;
-
-                        continue;
-                    }
-                    // distributing to the event
-                    // cout << "v775 Kanal " << n << " wartosc " << wart << endl;
-                    //                    auto c =
-                    // branch.Print(); //   FindID()
-                    //                            const LTRecord* const *array;
-                    // auto array = branch[0];  //.GetArray();
-                    // auto id = array   ->GetID();
-
-                    auto id  = current_board.FindChannel(n)[0]->GetID();
-
-                    //                    if(id != id_plastic){
-                    //                        cout << "Roznica nie powinna sie zdarzyc" << endl;
-                    //                    }
-                    //                    int id_plastic = current_board[n]->GetID();
-
-
-                    //                    cout << "Plastic data by TDC. " << visit_ptr->name
-                    //                         << " id_plastic "
-                    //                         << id_plastic  << "("
-                    //                         << (id_plastic/4)
-                    //                         << "+"
-                    //                         << (id_plastic%4)
-                    //                         << "), value = " << wart << endl;
-                    //                    if(id_plastic/4 == 6)
-                    //                    {
-                    //                        cout << "stop" << endl;
-                    //                    }
-
-                    string branch_name =
-                            current_board.FindChannel(n)[0]->GetBranch();
-                    if(branch_name == string("plastic"))
-                    {
-                        target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
-                        //   cout << "to plastic[" <<id << "] goes <--- " << wart << endl;
-
-                    }
-                    else if(branch_name == string("silicon"))
-                    {
-                        string variable_name =
-                                current_board.FindChannel(n)[0]-> GetVariable(0);
-                        int co = 1;
-                        if(variable_name == "time30")co = 1;
-                        else if(variable_name == "time80")co = 2;
-
-                        target_event->silicon[id][co] = wart;
-                        //    cout << "555to silicon[" <<id << "][" << co << "] goes <--- " << wart << endl;
-                    }
-
-                }
-            }  // endfor
-#endif
 
             nr_of_analysed_words += how_many_words;   // UWAGA!!!!!1
             continue;
@@ -6853,79 +6536,6 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
         {
 
             unpack_V879_878(visit_ptr);
-#if 0
-            //cout << "Wykryty V879, rozpakowuje jako 879, dane z " << visit_ptr->name << endl;
-
-            d879.Load(&visit_ptr->data);
-            // This will be plastic or silicon data
-            auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
-
-            for(int n = 0 ; n < d879.GetNchan() ; ++n)
-            {
-                auto wart = d879.GetData(n, 0);
-                if(wart > 0){
-                    // cout << "879 Kanal " << n << " wartosc " << wart << endl;
-                    // distributing to the event
-
-                    if(current_board.Size() == 0)
-                    {
-                        //static int licznik = 0;
-                        //if( (++licznik % 100) == 0)
-
-                        cout << "For signals coming from v879 "
-                             << visit_ptr->name
-                             << " - the plastic/silicon lookup table "
-                             << " is empty "
-                             << endl;
-                        continue;
-                    }
-
-                    auto branch = current_board.FindChannel(n);
-                    if(branch.Size() != 1)
-                    {
-                        cout << "For v879, " << visit_ptr->name << ", channel "
-                             << n
-                             << " is "<< (branch.Size() )
-                             << " times mentioned in a plastic/silicon lookup table "
-                             << endl;
-
-                        continue;
-                    }
-                    // distributing to the event
-
-
-                    int id  = current_board.FindChannel(n)[0]->GetID();
-
-                    string branch_name =
-                            current_board.FindChannel(n)[0]->GetBranch();
-                    if(branch_name == string("plastic"))
-                    {
-                        target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
-                        cout << "?????? to plastic[" <<id << "] goes <--- " << wart << endl;
-
-                    }
-                    else if(branch_name == string("silicon"))
-                    {
-                        string variable_name =
-                                current_board.FindChannel(n)[0]->GetVariable(0);
-                        int co = 0;
-                        if(variable_name == "time30")co = 1;
-                        else if(variable_name == "time80")co = 2;
-                        else{
-                            cout << "Katstrofa" ;
-                            continue ;
-                        }
-
-                        target_event->silicon[id][co] = wart;
-
-                        //                        if(id > 15)
-                        //                        cout << "to silicon[" <<id << "][" << co << "] goes <--- "
-                        //                             << wart << endl;
-                    }
-
-                } // end if
-            }//end for
-#endif // 0
 
             nr_of_analysed_words += how_many_words;
             continue;
@@ -6933,81 +6543,7 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
         else if(visit_ptr->type == string("V785"))
         {
             unpack_V785(visit_ptr);
-#if 0
-            // cout << "Wykryty V785, z informacja od " << visit_ptr->name<< endl;
-            d785.Load(&visit_ptr->data);
-            auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
 
-            for(int n = 0 ; n < d785.GetNchan() ; ++n)
-            {
-                auto wart = d785.GetData(n, 0);
-                if(wart > 0){
-                    // cout << "785 Kanal " << n << " wartosc " << wart << endl;
-                    // distributing to the event
-
-                    if(current_board.Size() == 0)
-                    {
-                        //static int licznik = 0;
-                        //if( (++licznik % 100) == 0)
-                        cout << "For signals coming from v785 "
-                             << visit_ptr->name
-                             << " - the plastic/silicon lookup table "
-                             << " is empty "
-                             << endl;
-                        continue;
-                    }
-
-
-                    auto branch = current_board.FindChannel(n);
-                    if(branch.Size() != 1)
-                    {
-                        cout << "For v785, " << visit_ptr->name << ", channel "
-                             << n
-                             << " is "<< (branch.Size() )
-                             << " times mentioned in a plastic/silicon lookup table "
-                             << endl;
-
-                        continue;
-                    }
-                    // distributing to the event
-                    // cout << "v785 Kanal " << n << " wartosc " << wart << endl;
-                    //                    auto c =
-                    // branch.Print(); //   FindID()
-                    //                            const LTRecord* const *array;
-                    // auto array = branch[0];  //.GetArray();
-                    // auto id = array   ->GetID();
-
-                    int id  = current_board.FindChannel(n)[0]->GetID();
-
-
-
-                    string branch_name =
-                            current_board.FindChannel(n)[0]->GetBranch();
-                    if(branch_name == string("plastic"))
-                    {
-                        target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
-                        cout << "?????? to plastic[" <<id << "] goes <--- " << wart << endl;
-
-                    }
-                    else if(branch_name == string("silicon"))
-                    {
-                        string variable_name =
-                                current_board.FindChannel(n)[0]->GetVariable(0);
-                        int co = 0;
-                        if(variable_name == "amplitude")co = 0;
-                        else continue ;
-
-
-                        target_event->silicon[id][co] = wart;
-                        //cout << "t444o silicon[" <<id << "][" << co << "] goes <--- " << wart << endl;
-                    }
-
-
-
-
-                } // endif
-            } // end for
-#endif
 
             nr_of_analysed_words += how_many_words;
             continue;
@@ -7015,40 +6551,8 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
         }
         else if(visit_ptr->type == string("V830"))
         {
-            // There is nothing in lookup table about this. PIOTR said: Ignore it
+            unpack_V830(visit_ptr);
 
-            // just in case if some dat Piotr will use it
-             //  unpack_V830(visit_ptr);
- #if 0
-
-
-            //            cout << "Wykryty scaler V830 (w danych 'kratta') z danymi nazwanymi: "
-            //                 << visit_ptr->name
-            //                 << endl;
-
-
-            d830.Load(&visit_ptr->data);
-
-            // auto current_board = visit_ptr->name;
-            // usually scl0,1,2,3
-            // cout << current_board << endl;
-            int board = visit_ptr->name[3] - '0';
-
-            for(int n = 0 ; n < d830.GetNchan() ; ++n)
-            {
-                auto wart = d830.GetData(n, 0);
-                if(wart > 0){
-                    // cout << "d830 Kanal " << n << " wartosc " << wart << endl;
-                    // distributing to the event
-
-                    int chan = board*32 + n;
-
-                    // cout << "Plastic scaler  " << chan << ", value = " << wart << endl;
-                    if(chan <KRATTA_NR_OF_PLASTICS )
-                        target_event->plastic_scalers[chan] = wart;
-                }
-            }
-#endif
             nr_of_analysed_words += how_many_words;
             continue;
 
@@ -7060,8 +6564,29 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
             continue;
 
         }
+        else if(visit_ptr->type == string("V1190"))
+        {
+            // cout << "dwa" << endl;
+
+            unpack_V1190(visit_ptr);
+
+            nr_of_analysed_words += how_many_words;
+            continue;
+
+        }
+        else if(visit_ptr->type == string("V2740"))
+        {
+            //cout << "V2740 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+
+            unpack_V2740(visit_ptr);
+
+            nr_of_analysed_words += how_many_words;
+            continue;
+
+        }
         else{
-            cout << "Jeszcze nie implementowane dekodowanie " << visit_ptr->type << endl;
+            cout << "Jeszcze nie implementowane dekodowanie bloku typu "
+                 << visit_ptr->type << endl;
             nr_of_analysed_words += how_many_words;
 
             continue;
@@ -7071,8 +6596,7 @@ void TIFJEventProcessor::unpack_ccb_non_kratta_z_metryczkami(uint32_t *data_bloc
     }// end for visiting card
 
 
-#else
-#endif// Visiting card
+
 
     // cout << "end of unpacking non kratta (hector?) " << endl;
 }
@@ -7095,8 +6619,8 @@ uint32_t     TIFJEventProcessor::swap_int32(uint32_t   dana)
 void TIFJEventProcessor::unpack_V775(Tvisitcard *visit_ptr )
 {
 
-    //            cout << "\nWykryta wizytowka V775 o name "
-    //                 << visit_ptr->name << endl;
+    cout << "\nWykryta wizytowka V775 o name "
+         << visit_ptr->name << endl;
 
     //            if(visit_ptr->name == string("tdc4"))
     //            {
@@ -7137,7 +6661,7 @@ void TIFJEventProcessor::unpack_V775(Tvisitcard *visit_ptr )
                     cout << "[A] Signal from the v775, " << visit_ptr->name << ", channel "
                          << n
                          << " this entry is "<< (branch.Size() )
-                         << " times mentioned in a plastic/silicon lookup table "
+                         << " [A] times mentioned in a plastic/silicon lookup table "
                             " (so this signal is ignored) "
                          << endl;
 
@@ -7176,7 +6700,7 @@ void TIFJEventProcessor::unpack_V775(Tvisitcard *visit_ptr )
             if(branch_name == string("plastic"))
             {
                 target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
-                //   cout << "to plastic[" <<id << "] goes <--- " << wart << endl;
+                cout << "775 to plastic[" <<id << "] goes <--- " << wart << endl;
 
             }
             else if(branch_name == string("silicon"))
@@ -7184,10 +6708,13 @@ void TIFJEventProcessor::unpack_V775(Tvisitcard *visit_ptr )
                 string variable_name =
                         current_board.FindChannel(n)[0]-> GetVariable(0);
                 int co = 1;
+                int xy = 0;
+                int ch = 0;
+
                 if(variable_name == "time30")co = 1;
                 else if(variable_name == "time80")co = 2;
 
-                target_event->silicon[id][co] = wart;
+                target_event->silicon[id][xy][ch][co] = wart;
                 //    cout << "555to silicon[" <<id << "][" << co << "] goes <--- " << wart << endl;
             }
 
@@ -7231,11 +6758,13 @@ void TIFJEventProcessor::unpack_V879_878(Tvisitcard *visit_ptr)
                 cout << "For v879, " << visit_ptr->name << ", channel "
                      << n
                      << " is "<< (branch.Size() )
-                     << " times mentioned in a plastic/silicon lookup table "
+                     << " [B] times mentioned in a plastic/silicon lookup table "
                      << endl;
 
                 continue;
             }
+
+
             // distributing to the event
 
 
@@ -7254,6 +6783,10 @@ void TIFJEventProcessor::unpack_V879_878(Tvisitcard *visit_ptr)
                 string variable_name =
                         current_board.FindChannel(n)[0]->GetVariable(0);
                 int co = 0;
+
+                int ch = 0;// jur_sil
+
+
                 if(variable_name == "time30")co = 1;
                 else if(variable_name == "time80")co = 2;
                 else{
@@ -7261,7 +6794,8 @@ void TIFJEventProcessor::unpack_V879_878(Tvisitcard *visit_ptr)
                     continue ;
                 }
 
-                target_event->silicon[id][co] = wart;
+                int xy = ch % 16 ;// jur_sil
+                target_event->silicon[id][xy][ch][co] = wart;
 
                 //                        if(id > 15)
                 //                        cout << "to silicon[" <<id << "][" << co << "] goes <--- "
@@ -7304,7 +6838,7 @@ void TIFJEventProcessor::unpack_V785(Tvisitcard *visit_ptr)
                 cout << "For v785, " << visit_ptr->name << ", channel "
                      << n
                      << " is "<< (branch.Size() )
-                     << " times mentioned in a plastic/silicon lookup table "
+                     << " [C] times mentioned in a plastic/silicon lookup table "
                      << endl;
 
                 continue;
@@ -7334,11 +6868,16 @@ void TIFJEventProcessor::unpack_V785(Tvisitcard *visit_ptr)
                 string variable_name =
                         current_board.FindChannel(n)[0]->GetVariable(0);
                 int co = 0;
+
+
+                int ch = 0; // jur_sil
+                int xy = 0; // jur_sil
+
                 if(variable_name == "amplitude")co = 0;
                 else continue ;
 
 
-                target_event->silicon[id][co] = wart;
+                target_event->silicon[id][xy][ch][co] = wart;
                 //cout << "t444o silicon[" <<id << "][" << co << "] goes <--- " << wart << endl;
             }
 
@@ -7349,15 +6888,15 @@ void TIFJEventProcessor::unpack_V785(Tvisitcard *visit_ptr)
 //**********************************************************************************************
 void TIFJEventProcessor::unpack_V830(Tvisitcard *visit_ptr)
 {
-    //            cout << "Wykryty scaler V830 (w danych 'kratta') z danymi nazwanymi: "
-    //                 << visit_ptr->name
-    //                 << endl;
+    //                cout << "Wykryty scaler V830 (w danych 'kratta') z danymi nazwanymi: "
+    //                     << visit_ptr->name
+    //                     << endl;
 
-    static unsigned int licznik ;
-    if( !( (++licznik) % 100))
-        cout << "Wykryty scaler V830 z danymi nazwanymi: "
-             << visit_ptr->name
-             << endl;
+    //    static unsigned int licznik ;
+    //    if( !( (++licznik) % 100))
+    //        cout << "Wykryty scaler V830 z danymi nazwanymi: "
+    //             << visit_ptr->name
+    //             << endl;
 
     d830.Load(&visit_ptr->data);
 
@@ -7381,6 +6920,262 @@ void TIFJEventProcessor::unpack_V830(Tvisitcard *visit_ptr)
         }
     }
 }
+//*****************************************************************************************
+void TIFJEventProcessor::unpack_V1190(Tvisitcard *visit_ptr)
+{
+    //  return;
+    // cout << "==========Wykryty V1190 " << __PRETTY_FUNCTION__ << endl;
+    // cout << "==========Wykryty V1190, z informacja od " << visit_ptr->name<< endl;
+    d1190.Load(&visit_ptr->data);
+    auto current_board = ltb_plastic->FindBoard(visit_ptr->name);
+    // current_board.Print();
+
+
+    // cout << " ile kanalow od d1190 = " << d1190.GetNchan() << endl;
+    for(int n = 0 ; n < d1190.GetNchan() ; ++n)
+    {
+        auto wart = d1190.GetData(n, 0);
+        if(wart > 0){
+            // cout << "v1190 Kanal " << n << " ma wartosc " << wart << endl;
+            // distributing to the event
+
+            if(current_board.Size() == 0)
+            {
+                static int licznik = 0;
+                if( (++licznik % 10000) == 0)
+                {
+                    cout << "XXXX For signals coming from v1190 "
+                         << visit_ptr->name
+                         << " - the plastic lookup table "
+                         << ltb_plastic->name
+                         << " has no entry\nso I ignore this data "   // czyli" current_board.Size() jest zerowy, pomijam !"
+                         << endl;
+                }
+                continue;
+            }
+
+
+            auto branch = current_board.FindChannel(n);
+
+            if(branch.Size() != 1)
+            {
+                cout << "For V1190 "
+                     << visit_ptr->name << ", channel "
+                     << n
+                     << " ma branch.Size() = " << (branch.Size() )
+                     << " czyli rózna od 1 , czy to znaczy, że jest  "
+                     << " pusty? [Dplast] times mentioned in a plastic/silicon lookup table "
+                     << endl;
+
+                continue;
+            }
+            // distributing to the event
+            // powtorzenie?
+            // cout << "v1190 Kanal " << n << " wartosc " << wart << endl;
+
+            // cout << "Printing the branch: " << endl;
+            // branch.Print(); //   FindID()
+            //       const LTRecord* const *array;
+            //             auto array = branch[0];  //.GetArray();
+            //             auto id = array   ->GetID();
+
+            int id  = current_board.FindChannel(n)[0]->GetID();
+
+
+            string branch_name =
+                    current_board.FindChannel(n)[0]->GetBranch();
+            if(branch_name == string("plastic"))
+            {
+
+                target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
+                // cout << " [X1] The value " << wart
+                //      << " is sent to target_event->plastic["
+                //      <<id << "]"
+                //     << " which is kratta nr id/4 = " << (id / 4)
+                //     << ", quarter " << (id % 4)
+                //     << endl;
+
+
+            }
+            else if(branch_name == string("silicon"))
+            {
+                string variable_name =
+                        current_board.FindChannel(n)[0]->GetVariable(0);
+                int co = 0;
+                if(variable_name == "amplitude")co = 0;
+                else continue ;
+
+                int xy = 0;// jur_sil
+                int ch = 0 ; // jur_sil
+
+                target_event->silicon[id][xy][ch][co] = wart;
+                // cout << " [Y] The value " << wart << " is sent to target_event->silicon["
+                //         <<id << "][" << co << "] "  << endl;
+            }
+
+        } // endif
+    } // end for
+
+}
+//**********************************************************************************************
+//*****************************************************************************************
+void TIFJEventProcessor::unpack_V2740(Tvisitcard *visit_ptr)
+{
+
+    // return;
+
+
+    // cout << "==========Wykryty V2740, z informacja od " << visit_ptr->name<< endl;
+
+    d2740.Load(&visit_ptr->data);
+    // cout << "przed HEADER --------------------------------- LINE = " << __LINE__ << endl;
+    // d2740.ShowHeader();
+
+    auto current_board = ltb_silicon->FindBoard(visit_ptr->name);
+
+    // cout << "ILe kanalow = d2740.GetNchan() =  " << d2740.GetNchan() << endl;
+    for(int n = 0 ; n < d2740.GetNchan() ; ++n)
+    {
+        auto wart = d2740.GetData(n, 0);  // potem i tak jeeszcze raz
+        // cout << "2740 Kanal " << n << " ma wartosc " << wart << endl;
+
+        if(wart > 0){
+            // cout << "2740 Kanal " << n << " ma niezerowa  wartosc " << wart << endl;
+            // distributing to the event
+
+            if(current_board.Size() == 0)
+            {
+                //static int licznik = 0;
+                //if( (++licznik % 100) == 0)
+
+                cout << "For signals coming from v2740 , name = "
+                     << visit_ptr->name
+                        // << current_board.
+                     << " - the current board.Size()  is 0  "
+                     << endl;
+                continue;
+            }
+
+            // cout << "LINE = " << __LINE__ << endl;
+
+            auto branch = current_board.FindChannel(n);
+            // cout << "LINE = " << __LINE__ << endl;
+
+            if(branch.Size() != 1)
+            {
+                cout << "For V2740 "
+                     << visit_ptr->name << ", channel "
+                     << n
+                     << " branch.Size() = "<< (branch.Size() )
+                     << " wiec "
+                     << " pusty? [Dsiilic] times mentioned in a plastic/silicon lookup table "
+                     << endl;
+
+                continue;
+            }
+            // distributing to the event
+            // powtorzenie?
+            // cout << "v2740 Kanal " << n << " wartosc " << wart << endl;
+            // cout << "LINE = " << __LINE__ << endl;
+
+            // cout << "Printing the branch: " << endl;
+            // branch.Print(); //   FindID()
+            //       const LTRecord* const *array;
+            // auto array = branch[0];  //.GetArray();
+            // auto id = array   ->GetID();
+            //cout << "gdzie = " << __LINE__ << endl;
+
+            int id  = current_board.FindChannel(n)[0]->GetID();
+
+
+            string branch_name =
+                    current_board.FindChannel(n)[0]->GetBranch();
+            // cout << "gdzie = " << __LINE__ << "  DDD branch_name = [" << branch_name << "]" << endl;
+
+            if(branch_name == string("plastic"))
+            {
+                cout << "TUTAJ Plastic ??" << endl;
+                target_event->plastic[id] = wart;     // time goes to 0. If in future we have energy, it will go to 1
+                // cout << " [X2] The value " << wart
+                //      << " is sent to target_event->plastic["
+                //      <<id << "]"  << endl;
+
+            }
+            // else
+            if(branch_name == string("silicon"))
+            {
+                // cout << " branch_name jest " << branch_name << endl;
+
+                // auto channel  = current_board.FindChannel(n)[0];
+                // auto ccc = channel->GetVariable(0);
+
+                // string  variable_name = current_board.FindChannel(n)[0]->GetVariable(0);
+                // cout << "--------------------------w galezi 'silicon' :variable_name = " << variable_name << endl;
+                // cout << "gdzie = " << __LINE__ << endl;
+
+                int nr_of_det = id / 1000 ;
+
+                int xy =  (id - (nr_of_det * 1000) ) / 100;
+                // xy = xy / 100;
+
+                int stripe = id % 100 ;
+                target_event->silicon_fired[nr_of_det] = true;
+
+                for (int co = 0 ; co < 4 ; co++){
+
+                    // 0 - time
+                    // 1 - amplituta
+                    // 2 - pedestal
+                    // 3  - risetime
+
+                    wart = d2740.GetData(n, co);
+
+                    target_event->silicon[nr_of_det][xy][stripe][co] = wart;
+
+                    // cout << " [Y] The value " << wart << " is sent to target_event->silicon["
+                    //      << nr_of_det << "]["
+                    //      << xy << "]["
+                    //      << stripe << "]["
+                    //      << co << "] "
+                    //      << endl;
+                    // cout << "juz " << endl;
+                }
+                int size = d2740.GetDataSize(n) - 4; // because skippinf above 4 signals (co)
+                if(size)
+                {
+                    // cout << " there is a signal spectum " << endl;
+                    for(int i = 0 ; i < size ; ++i)
+                    {
+                        double wart = d2740.GetData(n, i);
+                        target_event->silicon_signals[nr_of_det][xy][stripe][i] = wart;
+
+                        // if (i < 5 )
+                        // {
+                        //     cout << i << "), wart = " << wart ; // << endl;
+                        //     cout << ", sprawdzam "   << target_event->silicon_signals[nr_of_det][xy][stripe][i]
+                        //             << endl ;
+                        // }
+                    }
+                    // cout << " [Y] These values shoud be sent to target_event->silicon["
+                    //      << nr_of_det << "]["
+                    //      << xy << "]["
+                    //      << stripe << "]"
+                    //      << endl;
+
+
+                } // if size
+                // int m = 24;
+            }
+            else{
+                cout << "Nie rozpoznane branch name = " << branch_name << endl;
+            }
+
+        } // endif
+    } // end for
+    // cout << "KOniec f.cji " << __func__ << endl;
+}
+//**********************************************************************************************
+
 
 
 // TIFJEventProcessor

@@ -35,7 +35,7 @@ double Tkratta_crystal::pd2_time_cal_lower_threshold;
 double Tkratta_crystal::pd2_time_cal_upper_threshold;
 
 //static
-spectrum_2D* Tkratta_crystal::spec_geometry;
+//spectrum_2D* Tkratta_crystal::spec_geometry;
 
 //************************************************************************
 Tkratta_crystal:: Tkratta_crystal(Tkratta *ptr_owner, string name, int id_nr)
@@ -45,6 +45,7 @@ Tkratta_crystal:: Tkratta_crystal(Tkratta *ptr_owner, string name, int id_nr)
 
    // segment_nr = id_nr;
     data = nullptr;
+
 
     // reading some data for geo file
 
@@ -353,25 +354,17 @@ void Tkratta_crystal::create_my_spectra()
 
     owner->spectra_ptr()->push_back(spec_pd1_vs_pd2) ;
 
+
+
     // static!
-    if(!spec_geometry){
-        name = "kratta_geometry"  ;
-        spec_geometry = new spectrum_2D( name,
-                                           16*4,  0, 160,
-                                           12,    -120, 0,
-                                         folder, "",
-                                         "X: No_such_incrementer_defined\n"
-                                           "Y: No_such_incrementer_defined"
-                                           );
-        owner->spectra_ptr()->push_back(spec_geometry) ;
-    }
+
 }
 //********************************************************************************************************
 void Tkratta_crystal::analyse_current_event()
 {
-//      cout << "   analyse_current_event()          for "
-//            << name_of_this_element
-//            << endl ;
+     // cout << "   analyse_current_event()          for "
+     //       << name_of_this_element
+     //       << endl ;
 
     flag_fired = false;
     flag_good = false;
@@ -543,11 +536,16 @@ void Tkratta_crystal::analyse_current_event()
     if(flag_fired)
     {
         if(pd0_amplitude_raw>2)
-            spec_geometry->manually_increment(crystal_position_x, crystal_position_y);
+            owner_spec_geometry->manually_increment(crystal_position_x, crystal_position_y);
         if(pd1_amplitude_raw>2)
-            spec_geometry->manually_increment(crystal_position_x + 3, crystal_position_y);
+            owner_spec_geometry->manually_increment(crystal_position_x + 2, crystal_position_y);
         if(pd2_amplitude_raw>2)
-            spec_geometry->manually_increment(crystal_position_x + 6, crystal_position_y);
+            owner_spec_geometry->manually_increment(crystal_position_x + 4, crystal_position_y);
+
+        // for testing purposes
+//        owner_spec_geometry->manually_increment(crystal_position_x + 0, 5.0);
+//        owner_spec_geometry->manually_increment(crystal_position_x + 2, 5.0);
+//        owner_spec_geometry->manually_increment(crystal_position_x + 4, 5.0);
     }
 
     if(RisingAnalysis_ptr->is_verbose_on() && flag_fired )
@@ -586,11 +584,19 @@ void Tkratta_crystal::make_preloop_action(ifstream & s)
     read_cal_factors_into(pd2_time_calibr_factors, name_of_this_element + "_pd2_time_calibr_factors", s );
     //========================================
 
+    read_geometry();
+    read_gates();
+}
+//**************************************************************
+/** reading calibration, gates, setting pointers */
+void Tkratta_crystal::read_geometry()
+{
+    owner_spec_geometry = owner->spec_geometry;
     // ---------------------
     // Geometry: phi, theta, distance
     //----------------------
     // here we read the Geometry
-    string geometry_file = "calibration/kratta_geometry.txt" ;
+    string geometry_file = "calibration/kratta_geometry_map.txt" ;
 
     string slowo;
     try
@@ -629,8 +635,8 @@ void Tkratta_crystal::make_preloop_action(ifstream & s)
         // theta_geom has Y coordindate
 
 
-        crystal_position_x = phi_geom * 2;   // (20 * (id % 6)) -60 + some_space;
-        crystal_position_y = -theta_geom * 2;   // -20 * (id / 6);
+        crystal_position_x = phi_geom;   // (20 * (id % 6)) -60 + some_space;
+        crystal_position_y = theta_geom;   // -20 * (id / 6);
         crystal_position_z = 0;
 
 //        int some_space = 20;
@@ -639,24 +645,24 @@ void Tkratta_crystal::make_preloop_action(ifstream & s)
 //        crystal_position_z = 0;
 
 
-        ofstream plikG("my_binnings/kratta_geometry.mat.pinuptxt", ios::app);
-        if(!plikG){
-         cout << "Wrong opening of the pinup text file";
-         exit(1);
-        }
-        plikG   << crystal_position_x - 10 << "   "
-                << crystal_position_y - 2
-                << " "
-                //<< (name_of_this_element) // + "_ phi=" +to_string(phi_geom))
-                << (name_of_this_element.substr(name_of_this_element.size() -2, 2)) // + "_ phi=" +to_string(phi_geom))
-                << endl;
-
-        plikG.close();
-
-//        cout     << crystal_position_x << "   "
-//                << crystal_position_y
-//                << " " << name_of_this_element
+//        ofstream plikG("my_binnings/kratta_geometry_map.mat.pinuptxt", ios::app);
+//        if(!plikG){
+//         cout << "Wrong opening of the pinup text file";
+//         exit(1);
+//        }
+//        plikG   << crystal_position_x - 10 << "   "
+//                << crystal_position_y - 2
+//                << " "
+//                //<< (name_of_this_element) // + "_ phi=" +to_string(phi_geom))
+//                << (name_of_this_element.substr(name_of_this_element.size() -2, 2)) // + "_ phi=" +to_string(phi_geom))
 //                << endl;
+
+//        plikG.close();
+
+////        cout     << crystal_position_x << "   "
+////                << crystal_position_y
+////                << " " << name_of_this_element
+////                << endl;
 
     }
     catch(string sss)
@@ -696,7 +702,7 @@ void Tkratta_crystal::make_preloop_action(ifstream & s)
         exit(-1) ;
     }
 
-    read_gates();
+
 
 }
 //***************************************************************

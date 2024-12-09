@@ -1,4 +1,4 @@
-//////////////////////////////////////////////////////////////////
+﻿//////////////////////////////////////////////////////////////////
 // Jurek Grebosz, 14 June 2002
 //
 // spectra hierarchy
@@ -18,6 +18,8 @@ using namespace std ;
 #include <iostream>
 #include <fstream>
 #include <cmath>
+
+extern bool flag_powtorzyc_po_zakonczeniu_innych ;
 ////////////////////////////////////////////////////////////////////
 // Descriptor stores on the disk the list of all currently collected spectra
 // This information isused by the cracow
@@ -36,6 +38,8 @@ public:
         plik << "version_with_incrementers\n";  // to distinguish from the old style
         plik.close();
     }
+
+
     //--------------------------- for 1D spectra
 #define WHERE   cout << __FILE__<< ", line " << __LINE__ << endl;
 
@@ -128,6 +132,7 @@ public:
 
     virtual void double_incrementer_X(double * candidate) = 0 ;
     virtual void double_incrementer_Y(double * candidate) = 0 ;
+    virtual void clear_rotation_calculations(){ }
 
     void set_adres_of_condition_flag(bool * adres)
     {
@@ -320,6 +325,18 @@ protected:
     int y_spectrum_length ; // so many "bins"
     double y_min_bin ;
 
+    // new - for rotation of matrix
+    bool flag_rotation_enabled = false ;
+    bool flag_rotation_prepared = false;
+    double rotation_angle_degrees = 0;
+    double  sinus_angle = 0.0,
+            cosinus_angle = 1.0;  // prepared to make if faster
+    vector<double> x_rot_cal_fact;
+    vector<double> y_rot_cal_fact;
+
+    double x_rotated = 88;
+    double y_rotated = 99;
+    bool flag_rotated_incrementers_ready = false;
 public:
 
     //-------------------------------------------
@@ -332,6 +349,19 @@ public:
     // D'TOR-------------------------------------
     ~spectrum_2D();
 
+    double * give_x_rotated_adress()
+    {
+        return &x_rotated;
+    }
+    double * give_y_rotated_adress()
+    {
+        return &y_rotated;
+    }
+
+    auto address_of_rotation_succ_flag()
+    {
+        return & flag_rotated_incrementers_ready;
+    }
 
     //-------------------------------------------
     void increment_yourself();
@@ -350,6 +380,7 @@ public:
 
         y_int_incrementers_vector.resize(0) ;
         y_double_incrementers_vector.resize(0) ;
+        // flag_rotation_prepared = false;
     }
     //------------------------------------------
     void save_to_disk() ;
@@ -369,34 +400,168 @@ public:
     //------------------------------------------
     void manually_increment(int x_value, int y_value)
     {
-        // cout << "spectrum_2D:: manually_increment" << endl;
-        ptr_root_spectrum->Fill(x_value, y_value);      //@@@@@@@@@@@@@@@@@@
+        //  cout<< __PRETTY_FUNCTION__ << endl;
+        // ptr_root_spectrum->Fill(x_value, y_value);      //@@@@@@@@@@@@@@@@@@
+        manually_increment_angle(x_value, y_value);
         //statistics();
     }
     //------------------------------------------
     void manually_increment(long x_value, long y_value)
     {
-        // cout << "spectrum_2D:: manually_increment" << endl;
+         cout << __PRETTY_FUNCTION__ << " - spectrum_2D:: manually_increment" << endl;
         ptr_root_spectrum->Fill(x_value, y_value);      //@@@@@@@@@@@@@@@@@@
+        manually_increment_angle(x_value, y_value);
         //statistics();
     }
     //------------------------------------------
     void manually_increment(long long x_value, long long y_value)
     {
-        // cout << "spectrum_2D:: manually_increment" << endl;
+          cout<< __PRETTY_FUNCTION__ << endl;
         ptr_root_spectrum->Fill(x_value, y_value);      //@@@@@@@@@@@@@@@@@@
         //statistics();
     }
 
     void manually_increment(double x_value, double y_value)
     {
-        ptr_root_spectrum->Fill(x_value, y_value);    // @@@@@@@@@@@@@@@@@@@
+        manually_increment_angle(x_value, y_value);
+        //ptr_root_spectrum->Fill(x_value, y_value);    // @@@@@@@@@@@@@@@@@@@
         //statistics();
     }
+    void manually_increment_angle(double x_value, double y_value)
+    {
+       // cout << "Inkrementacja dla widma " <<  give_name() << endl;
+        double xr = x_value;
+        double yr = y_value;
+        flag_rotated_incrementers_ready = false;
 
+        if(flag_rotation_enabled)
+        {
+            if(flag_rotation_prepared == false) {
+                set_rotation_of_matrix(rotation_angle_degrees);
+            }
+            // we must recalculate previous value
+//            if(degree != rotation_angle_degrees)
+//            {
+//                // to konieczne przeliczenia
+//                double radians = M_PI  * 2 * degree / 360;
+//                sinus_angle = sin(radians);
+//                cosinus_angle = cos(radians);
+//                // nie niszczymy! rotation_angle_degrees = degree;
+//            }
+
+
+//            //            sinus_angle = sin(degree);
+//            //            cosinus_angle = cos(degree);
+//            cout << "Rotowana inkrementacja dla  " <<  give_name()
+//                 << " o kat " << rotation_angle_degrees << endl;
+
+            xr = (x_value * cosinus_angle) - (y_value * sinus_angle);
+            yr = (x_value * sinus_angle) + ( y_value * cosinus_angle);
+
+            // kalibracja na życzenie Marysi
+            double tmp = 0;
+            for(unsigned int i = 0 ; i < x_rot_cal_fact.size() ;++i)
+            {
+                tmp += x_rot_cal_fact[i] * pow(xr, i) ;
+            }
+            xr = tmp;
+            x_rotated = xr;
+
+            tmp = 0;
+            for(unsigned int i = 0 ; i < y_rot_cal_fact.size() ;++i)
+            {
+                tmp += y_rot_cal_fact[i] * pow(yr, i) ;
+            }
+            yr = tmp;
+            y_rotated = yr;
+
+            // cout << "Po rotacji x_rotated = " << x_rotated << endl;
+            flag_rotated_incrementers_ready = true;
+
+        }
+        ptr_root_spectrum->Fill(xr, yr);    // @@@@@@@@@@@@@@@@@@@
+        //statistics();
+    }
+    //----------------------------------------------
+    void clear_rotation_calculations(){
+        x_rotated = 0;
+        y_rotated = 0;
+        flag_rotated_incrementers_ready = false;
+
+    }
+    //----------------------------------------------
+    void set_rotation_of_matrix(double rotation_angle_degrees_)
+    {
+        if(rotation_angle_degrees_ < 0){
+            rotation_angle_degrees = 360 + rotation_angle_degrees_;
+        }else{
+            rotation_angle_degrees = rotation_angle_degrees_;
+        }
+
+        // cout << "to konieczne wstepne przeliczenia dla " <<  give_name() << endl;
+        double radians = M_PI  * 2 * rotation_angle_degrees / 360;
+        sinus_angle = sin(radians);
+        cosinus_angle = cos(radians);
+        flag_rotation_prepared = true;
+
+    }
+    //----------------------------------------------
+    void set_flag_rotation(bool a)
+    {
+        flag_rotation_enabled = a;
+    }
+    //----------------------------------------------
+    void set_rotation_angle_degrees(double d)
+    {
+        rotation_angle_degrees = d;
+    }
+    //----------------------------------------------
+    void set_rotation_cal_fact(vector<double> xc, vector<double> yc)
+
+    {
+        x_rot_cal_fact = xc;
+        y_rot_cal_fact = yc;
+
+
+    }
+//----------------------------------------------
     void read_from_disk();
+
+    //----------------------------------------------
     /** No descriptions */
-    void manually_increment_by(double x, double y, int value);
+    void manually_increment_by ( double x, double y, int value )
+    {
+        // "Is it used ever;
+        // it is used for ratio plots (for example in Kratta)
+
+        // rotation not possible?
+
+        double xr = x;
+        double yr = y;
+        flag_rotated_incrementers_ready = false;
+
+
+        if(rotation_angle_degrees > 0.0){
+            // to konieczne przeliczenia
+            double radians = M_PI  * 2 * rotation_angle_degrees / 360;
+            sinus_angle = sin(radians);
+            cosinus_angle = cos(radians);
+
+            xr = (x * cosinus_angle) - (y * sinus_angle);
+            yr = (x * sinus_angle) + ( y * cosinus_angle);
+            // może także tutaj kalibracja -----------
+        double tmp = 0;
+        for(unsigned int i = 0 ; i < x_rot_cal_fact.size() ;++i)
+        {
+            tmp += pow(xr, i) ;
+        }
+        xr = tmp;
+            x_rotated = xr;
+            y_rotated = yr;
+            flag_rotated_incrementers_ready = true;
+        }
+        ptr_root_spectrum->Fill ( xr, yr, value );
+    }
 };
 ///////////////////////////////////////////////////////////////////////////////
 #endif // SPECTRUM_H

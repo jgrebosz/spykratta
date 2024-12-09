@@ -45,7 +45,7 @@ using namespace std;
 #include "Tcondition_description.h"
 
 #include "Tcate.h"
-#include "Tcate_telescope.h"
+//  #include "Tcate_telescope.h"
 
 #include "Tuser_incrementer.h"
 #include "Tfile_helper.h"
@@ -65,7 +65,7 @@ TIFJCalibratedEvent * TIFJAnalysis::fxCaliEvent;   // static
 TIFJAnalysis *RisingAnalysis_ptr;
 
 extern unsigned int starting_event; // global to be set in main and accessed from constructor of TGo4Analysis.cxx
-
+bool flag_powtorzyc_po_zakonczeniu_innych ;
 //****************************************************************************
 TIFJAnalysis::TIFJAnalysis()
     :
@@ -366,8 +366,11 @@ int TIFJAnalysis::UserPreLoop()
 
 #endif // #ifdef USER_INCREMENTERS_ENABLED
 
+   create_file_with_incrementers();
+#if 0
     //################################################
-    // storing list of names of variables for cracow Wizard
+    // Creating a file with a list of names of variables for Greware wizards
+
     ofstream plik("commands/list_of_variables.txt");
     ofstream plikselfgates("commands/list_of_variables_with_selfgates.txt");
     Tmap_of_named_pointers::iterator pos;
@@ -404,7 +407,7 @@ int TIFJAnalysis::UserPreLoop()
     plik.close();
     plikselfgates.close();
 
-
+#endif
     //  read_in_verbose_parameters();     // for listing someof the events
 
     read_autosave_time();  // and so called -other options
@@ -412,6 +415,9 @@ int TIFJAnalysis::UserPreLoop()
     // adding my user spectra h-----------------
     read_definitions_of_user_spectra();
 
+
+    // below definitions, because some user spectra may produce their own incremeters
+    create_file_with_incrementers();
 
     cout << "\nAfter finishing to define the spectra, there are such conditions"
          << endl;
@@ -520,15 +526,72 @@ int TIFJAnalysis::UserEventFunc()
         // and it is called earlier, on the end of the step2, because we need to know the result
         // earlier, just before storing the data in the n-tuple
 
-
+#if 0
+        vector<Tuser_spectrum*> do_powtorki;
         for(unsigned i = 0; i < spectra_user.size(); i ++)
         {
             //                             cout << "Working with the user spectrum nr " << i
             //                             << " called " << spectra_user[i]->give_name()
             //                             << endl;
             spectra_user[i]->make_incrementations();
+
+            if(flag_powtorzyc_po_zakonczeniu_innych)
+            {
+                do_powtorki.push_back(spectra_user[i]);
+                cout << "Konieczne powtorzenie inkrementacji widma rotowanego" << endl;
+            }
+        }
+#endif
+
+        //##########################
+        vector<int> do_powtorki;
+        flag_powtorzyc_po_zakonczeniu_innych = false;
+
+//        cout << "---  Nowe cykl inkrementacji "
+//             << spectra_user.size()
+//             << " widm user "
+//             << endl;
+
+        for(unsigned nr = 0; nr < spectra_user.size(); nr++)
+        {
+//            cout << "Proba inkrementacji "
+//                 << spectra_user[nr]->give_name() << endl;
+
+             spectra_user[nr]->make_incrementations();
+
+            // może się zdarzyć, że to widmo korzysta z inkrementorów rotacji
+            // definiowanych przez jedno z późniejszych na liscie,
+            // wtedy ustawiło ono poniższy flag
+            if(flag_powtorzyc_po_zakonczeniu_innych)
+            {
+                cout << "Konieczne bedzie powtorzenie inkrementacji "
+                     << spectra_user[nr]->give_name() << endl;
+                do_powtorki.push_back(nr);
+                flag_powtorzyc_po_zakonczeniu_innych = false;
+            }
         }
 
+       while(do_powtorki.size()){
+
+        for(unsigned int n = 0 ; n < do_powtorki.size() ; ++n)
+        {
+            cout << "Konieczna powtorka niemozliwej inkrementacji "
+                 << spectra_user[n]->give_name() << endl;
+             spectra_user[do_powtorki[n] ]->make_incrementations();
+
+            // usunac ten numer z vectora powtorki
+             do_powtorki.erase(do_powtorki.begin() + n);
+             break;
+        }
+
+       }
+        // ---------------
+        // some features of user spectra have to be zeroed (for example rotation results)
+        // oftherwise in the next event they will be used even if they are not fired
+        for(auto s : spectra_user)
+        {
+            s->final_clear_some_calculations();
+        }
 
         make_ratio_spectra();
     }
@@ -1459,7 +1522,7 @@ void TIFJAnalysis::perhaps_delete_some_spectra()
     time_t now = time(0);
     string full_name_of_spectrum;
 
-    if(now - last > 2)    // every 3 seconds
+    if(now - last > 3)    // every 3 seconds
     {
         last = now;
         // check on the disk for the command "continue"
@@ -1488,7 +1551,9 @@ void TIFJAnalysis::perhaps_delete_some_spectra()
                 }// if plik
                 cout << "Zeroing spectrum: " << spec_name << "\n" ;
 
-                if(spec_name == "this_is_the_end_of_the_list_of_spectra_which_cracow_wants_to_zero")
+                if(spec_name == "this_is_the_end_of_the_list_of_spectra_which_greware_wants_to_zero"
+                        || spec_name == "this_is_the_end_of_the_list_of_spectra_which_cracow_wants_to_zero"
+                        )
                 {
                     break;  // this was the last spectrum to delete
                 }
@@ -1812,12 +1877,35 @@ void TIFJAnalysis::read_definitions_of_user_spectra()
 
     // loop which is looking into the directory for a specified definions *.
 
+    vector<int> do_powtorki;
+    flag_powtorzyc_po_zakonczeniu_innych = false;
     for(unsigned nr = 0; nr < names.size(); nr++)
     {
-        cout << "User defined spectrum definition file : " << names[nr] <<
-                endl;
+                cout << "User defined spectrum definition file : " << names[nr] <<
+                        endl;
         create_user_spectrum(names[nr]);
+
+        // może się zdarzyć, że to widmo korzysta z inkrementorów rotacji
+        // definiowanych przez jedno z późniejszych na liscie
+        if(flag_powtorzyc_po_zakonczeniu_innych)
+        {
+            do_powtorki.push_back(nr);
+            flag_powtorzyc_po_zakonczeniu_innych = false;
+        }
     }
+
+   while(do_powtorki.size()){
+
+    for(unsigned int i = 0 ; i < do_powtorki.size() ; ++i)
+    {
+        create_user_spectrum(names[i]);
+
+        // usunac ten numer z vectora powtorki
+         do_powtorki.erase(do_powtorki.begin() + i);
+         break;
+    }
+}
+
 }
 //**************************************************************
 /** No descriptions */
@@ -1853,6 +1941,13 @@ void TIFJAnalysis::create_user_spectrum(string name_of_description)
     user_spectrum_description  desc;
     desc.set_name(pathed_name_of_description);
     desc.read_from(pathed_name_of_description);
+
+    // if it is disabled (in greware) we skip it
+    if(desc.spectrum_enabled() == false)
+    {
+        cout << "     Spectrum " << name_of_description << " is disabled by Greware, so Spy skips it" << endl;
+        return ; // so we skipp this spectrum
+    }
 
     //check if such a spectrum already exists in our vector
     bool known = false;
@@ -1911,6 +2006,10 @@ void TIFJAnalysis::create_user_spectrum(string name_of_description)
         //cout << "user Spectrum object had to be created " << endl;
         spec = new Tuser_spectrum();
         spec->read_in_parameters(name_without_extension);     // the path will be added automatically
+        if(flag_powtorzyc_po_zakonczeniu_innych)
+        {
+            return;
+        }
 
         spec->create_the_spectrum();
         // during creation the spectrum registers itself
@@ -1925,7 +2024,12 @@ void TIFJAnalysis::create_user_spectrum(string name_of_description)
         // above spec was created with:  new Tspectrum_1D_conditional;
         cout << "Spectrum already existed" << endl;
         // somebody may change the enable/disable/incrementer list
-        spec->read_in_parameters(name_without_extension);     // the path will be added automatically
+        spec->read_in_parameters(name_without_extension); // the path will be added automatically
+        if(flag_powtorzyc_po_zakonczeniu_innych)
+        {
+            return;
+        }
+
 
     }
 
@@ -3096,8 +3200,7 @@ void TIFJAnalysis::user_batch()
     string komenda = ". ./" +  next_name;  // some system prefer command  'source' instead of '.'
 
     cout << "Trying to execute batch file =>" << komenda << "<" << endl;
-    //int result =
-    system(komenda.c_str());
+    [[__maybe_unused__]] int result =     system(komenda.c_str());
     //result =     system("pwd");
 
     //  cout << "Result was = " << result << endl;
@@ -3323,6 +3426,48 @@ void TIFJAnalysis::create_user_incrementer(string name_of_description)
 
 }
 //******************************************************************************
+void TIFJAnalysis::create_file_with_incrementers()
+{
+    //################################################
+    // Creating a file with a list of names of variables for Greware wizards
+
+    ofstream plik("commands/list_of_variables.txt");
+    ofstream plikselfgates("commands/list_of_variables_with_selfgates.txt");
+    Tmap_of_named_pointers::iterator pos;
+    for(pos = named_pointer.begin(); pos != named_pointer.end(); ++pos)
+    {
+
+        plik << pos->first << endl;
+        //        cout << pos->first << " odpowiada_adres " << ( reinterpret_cast<long> (&(pos->second) )) << endl;
+
+        auto drugi = pos->second ;
+        //         cout << " and his second (what type (of selfgate) is) is:= " << drugi.what_type << endl;
+        if(pos->second.ptr_detector != nullptr)
+        {
+            if(pos->second.ptr_detector->selfgate_type_is_not_avaliable() == false  )
+            {
+                plikselfgates
+                        << pos->first 					// name of incremener
+                        << "     "
+                        << static_cast<int>(pos->second.ptr_detector->give_selfgate_type()) // code of enum
+                        << endl;
+            }
+            else {
+                //                cout << "No selfgates for such detector? " << endl;
+            }
+        }
+
+    }
+    // *user incrementer as well
+    //     for(auto x : vector_of_user_incrementers)
+    //     {
+    //         plik << x << endl;
+    //     }
+
+    plik.close();
+    plikselfgates.close();
+}
+//******************************************************************************
 TjurekPolyCond* TIFJAnalysis::give_ptr_to_polygon(string name)
 {
     for(unsigned int i = 0 ; i < list_of_polygons.size() ; i++)
@@ -3399,7 +3544,7 @@ bool TGo4MbsFileParameter::open_file(string filename)
         if(!plik)
         {
             cout << "Can't open the file " << name_without_at << " with the list of files  --> called " << endl;
-            system("ls");
+           [[__maybe_unused__]] int res = system("ls");
             return false;
         }
 

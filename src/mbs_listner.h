@@ -20,8 +20,9 @@
 
 #include "MBSc2cpp.h"
 #include <string>
+#include <stdint.h>
 
-
+//typedef unsigned int32_t  uint32_t ;
 class mbs_listner
 {
 protected:

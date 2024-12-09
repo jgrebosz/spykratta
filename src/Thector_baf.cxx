@@ -5,7 +5,11 @@
     copyright            : (C) 2003 by Jurek Grebosz (IFJ Krakow, Poland)
     email                : jerzy.grebosz@ifj.edu.pl
 ***************************************************************************/
-#include "Thector_baf.h"
+
+#ifndef THECTOR_BAF_H
+    #include "Thector_baf.h" // may be warning because of template
+#endif
+
 #include <cmath>
 
 
@@ -255,7 +259,7 @@ void Thector_BaF<TOwnerClass>::create_my_spectra()
 //    constexpr int up_limit_cal = 30001;
      constexpr int up_limit_cal = 20001;
 
-    constexpr int up_limit_raw = 4096;
+    constexpr int up_limit_raw = 20001;
     string folder = "hector/" + name_of_this_element ;
     // ------SLOW  ----------------------------
     string name = name_of_this_element + "_slow_raw"  ;
@@ -352,7 +356,7 @@ void Thector_BaF<TOwnerClass>::create_my_spectra()
 
     name = name_of_this_element + "_alg_LaBr_cal"  ;
     spec_LaBr_cal = new spectrum_1D( name,
-                                     up_limit_raw, 1, up_limit_raw,   // was 4096
+                                     up_limit_cal, 1, up_limit_cal,   // was 4096
                                      folder , "from the fast_vs_slow (raw) polygon gate: LaBr",
                                      "No_such_incrementer_defined");
     owner->frs_spectra_ptr->push_back(spec_LaBr_cal) ;
@@ -370,7 +374,7 @@ void Thector_BaF<TOwnerClass>::create_my_spectra()
 
     name = name_of_this_element + "_alg_NaI_rotated_cal"  ;
     spec_NaI_cal = new spectrum_1D( name,
-                                    up_limit_raw, 1, up_limit_raw,   // was 4096
+                                    up_limit_cal, 1, up_limit_cal,   // was 4096
                                     folder , "after rotation, but from the fast_vs_slow (raw) polygon gate: NaI",
                                     "No_such_incrementer_defined");
     owner->frs_spectra_ptr->push_back(spec_NaI_cal) ;
@@ -387,7 +391,7 @@ void Thector_BaF<TOwnerClass>::create_my_spectra()
 
     name = name_of_this_element + "_alg_Compton_rotated_cal"  ;
     spec_Compton_ratated_cal = new spectrum_1D( name,
-                                        up_limit_raw, 1, up_limit_raw,   // was 4096
+                                        up_limit_cal, 1, up_limit_cal,   // was 4096
                                         folder , "after rotation, but from the fast_vs_slow (raw) polygon gate: Compton",
                                         "No_such_incrementer_defined");
     owner->frs_spectra_ptr->push_back(spec_Compton_ratated_cal) ;
@@ -407,14 +411,14 @@ void Thector_BaF<TOwnerClass>::create_my_spectra()
 
     name = name_of_this_element + "_alg_NaI_plus_Compton_cal"  ;
     spec_NaI_plus_Compt_cal = new spectrum_1D( name,
-                                               up_limit_raw, 1, up_limit_raw,   // was 4096
+                                               up_limit_cal, 1, up_limit_cal,   // was 4096
                                                folder , "after rotation, but from the fast_vs_slow (raw) polygon gates: NaI or Compton",
                                                "No_such_incrementer_defined");
     owner->frs_spectra_ptr->push_back(spec_NaI_plus_Compt_cal) ;
 
 
     // ----------------------------------
-    // matrices
+    // matrices 2D
     //-----------------------------------
 
     name =   name_of_this_element + "_fast_vs_slow" ;
@@ -439,6 +443,20 @@ void Thector_BaF<TOwnerClass>::create_my_spectra()
                                                  "X: " + name_of_this_element + "_fast_vs_slow_rotated_x_when_ok" +
                                                  "\nY: " + name_of_this_element + "_fast_vs_slow_rotated_y_when_ok");
     owner->frs_spectra_ptr->push_back(matr_fast_vs_slow_rotated) ;
+
+
+//    name =   name_of_this_element + "_fast_vs_slow_rotated_TST" ;
+//    matr_fast_vs_slow_rotated_TST = new spectrum_2D( name,
+//                                                 1000, -5000, 5000,
+//                                                  1000, -5000, 5000,
+//                                                 folder, "",
+//                                                 "X: " + name_of_this_element + "_fast_vs_slow_rotated_x_when_ok" +
+//                                                 "\nY: " + name_of_this_element + "_fast_vs_slow_rotated_y_when_ok");
+
+//    matr_fast_vs_slow_rotated_TST->set_rotation_of_matrix(45);
+
+//    owner->frs_spectra_ptr->push_back(matr_fast_vs_slow_rotated_TST) ;
+
 
     //--------------
     name =   name_of_this_element + "_fast_vs_slow_cal" ;
@@ -872,6 +890,24 @@ void Thector_BaF<TOwnerClass>::analyse_current_event()
                 // if (in NaI gate banana) -> put the rotated data x on spectra NaI_slow_not_cal and cal
 
             }
+
+
+//            //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//            // HERE: TUTAJ NA RAZIE TESTUJACE INSTRUKCJE DOT. ROTACJI
+//            //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//            matr_fast_vs_slow_rotated_TST->set_rotation_of_matrix(45);
+//            matr_fast_vs_slow_rotated_TST->manually_increment_angle(slow_raw, fast_raw);
+
+//            matr_fast_vs_slow_rotated_TST->set_rotation_of_matrix(0);
+
+//            matr_fast_vs_slow_rotated_TST->manually_increment_angle(0, 0);
+//            matr_fast_vs_slow_rotated_TST->manually_increment_angle(100, 0);
+//            matr_fast_vs_slow_rotated_TST->manually_increment_angle(0, 100);
+
+//            matr_fast_vs_slow_rotated_TST->set_rotation_of_matrix(45);
+//            matr_fast_vs_slow_rotated_TST->manually_increment_angle(0, 100);
+//            matr_fast_vs_slow_rotated_TST->manually_increment_angle(100, 0);
+
         }
 
         // Time
@@ -1558,5 +1594,5 @@ bool Thector_BaF<TOwnerClass>::read_important_polygons()
         return false;
 }
 //*************************************************************************
-// #ifdef HECTOR_PRESENT
-// #endif  // if hector present
+
+//#endif  // #ifndef THECTOR_BAF_H present

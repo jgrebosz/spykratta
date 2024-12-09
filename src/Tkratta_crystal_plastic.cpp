@@ -32,10 +32,10 @@ double Tkratta_crystal_plastic::energy_cal_lower_threshold;
 double Tkratta_crystal_plastic::energy_cal_upper_threshold;
 #endif
 
-//static
-spectrum_2D* Tkratta_crystal_plastic::spec_geometry;
-spectrum_2D* Tkratta_crystal_plastic::spec_geometry_ratios;
-spectrum_2D* Tkratta_crystal_plastic::spec_geometry_from_scalers;
+//static  NOT ANYMORE (they are in kratta.h)
+// spectrum_2D* Tkratta_crystal_plastic::spec_geometry;
+// spectrum_2D* Tkratta_crystal_plastic::spec_geometry_ratios;
+// spectrum_2D* Tkratta_crystal_plastic::spec_geometry_from_scalers;
 //************************************************************************
 Tkratta_crystal_plastic:: Tkratta_crystal_plastic(Tkratta *ptr_owner, string name, int id_nr)
     : owner(ptr_owner), name_of_this_element(name), my_id_nr(id_nr)
@@ -176,41 +176,61 @@ void Tkratta_crystal_plastic::create_my_spectra()
     //    owner->spectra_ptr()->push_back(spec_energy_vs_energy1) ;
 
 
-    // static!
-    if(!spec_geometry){
-        name = "plastic_geometry"  ;
-        spec_geometry = new spectrum_2D( name,
-                                         20*2, -0, 200,
-                                         12*2, -120, 0,  folder, "",
-                                         "X: No_such_incrementer_defined\n"
-                                           "y: No_such_incrementer_defined");
-        owner->spectra_ptr()->push_back(spec_geometry) ;
-    }
 
-    if(!spec_geometry_ratios){
-        name = "plastic_geometry_ratios"  ;
-        spec_geometry_ratios = new spectrum_2D( name,
-                                                20*2, -80, 120,
-                                                7*2, -50, 20,  folder, "",
-                                                "No_such_incrementer_defined");
-        owner->spectra_ptr()->push_back(spec_geometry_ratios) ;
-    }
-    if(!spec_geometry_from_scalers){
-        name = "plastic_geometry_from_scalers"  ;
-        spec_geometry_from_scalers = new spectrum_2D( name,
-                                                      20*2, -80, 120,
-                                                      7*2, -50, 20,  folder, "",
-                                                      "X: No_such_incrementer_defined\n"
-                                                      "X: No_such_incrementer_defined");
-        owner->spectra_ptr()->push_back(spec_geometry_from_scalers) ;
-    }
+
+    // This will be a matrix where we want to see boxes for every plastic crystal
+    // 7 columns
+    // 5 rows
+    // empty places are in a middle of row 2,3,4
+    int columns = 7;
+    int rows = 5;
+    constexpr int crystal_size = 4;    // size of one particular 1/4 box
+    int box_size = 2 * crystal_size;
+    int col_gap = 2;
+    int row_gap = 2;
+    // so sizes of matrix are
+    [[maybe_unused]] int width = col_gap + (columns * (box_size + col_gap));
+    [[maybe_unused]] int height = row_gap + (rows * (box_size + row_gap));
+
+//            auto *my_kratta = owner->give_crystal(my_id_nr / 4);
+
+            // obliczenie pozycji danej ćwiartki kryształu
+            // w stosunku do środka jego detektora
+            [[maybe_unused]] int quarter_x = my_id_nr % 4;
+//            int dx = 0; int dy = 0;
+//            constexpr int unit = crystal_size; // 2;  // rozmiar ćwiartki
+//            switch(quarter_x){
+//                case 0: dx = -unit; dy = unit; break;
+//                case 1: dx = unit; dy = unit; break;
+//                case 2: dx = -unit; dy = -unit; break;
+//                case 3: dx = unit; dy = -unit; break;
+//            }
+
+//            crystal_position_x = my_kratta->give_x()+dx;
+//            crystal_position_y = my_kratta->give_y()+dy;
+//            crystal_position_z = my_kratta->give_z();
+
+
+//    if(!spec_geometry_ratios){
+//        name = "plastic_geometry_ratios"  ;
+//        spec_geometry_ratios = new spectrum_2D( name,
+//                                                width/crystal_size,
+//                                                0, width,
+//                                                height/crystal_size,
+//                                                0, height,
+//                                                folder, "",
+//                                                "No_such_incrementer_defined");
+//        owner->spectra_ptr()->push_back(spec_geometry_ratios) ;
+//    }
+
+
 }
 //********************************************************************************************************
 void Tkratta_crystal_plastic::analyse_current_event()
 {
-    //      cout << "   analyse_current_event()          for "
-    //            << name_of_this_element
-    //            << endl ;
+         // cout << "   analyse_current_event()          for "
+         //       << name_of_this_element
+         //       << endl ;
 
     flag_fired = false;
     flag_good = false;
@@ -283,15 +303,40 @@ void Tkratta_crystal_plastic::analyse_current_event()
 #endif
     }
 
+
+
     if(flag_good){
-        spec_geometry->manually_increment(crystal_position_x, crystal_position_y);
 
+//        cout
+//                //<< "wskaznik = " << (long) owner->spec_plastic_geometry
+//             << " crystal_position_x = " << crystal_position_x
+//             << " crystal_position_y = " << crystal_position_y
+//             << endl;
 
+        owner->spec_plastic_geometry->manually_increment(
+                    crystal_position_x,
+                    crystal_position_y);
 
+        // Test --------------------
+//        owner->spec_plastic_geometry->manually_increment(
+//                    10,
+//                    10);
+//        owner->spec_plastic_geometry->manually_increment(
+//                    10,
+//                    12);
+//        owner->spec_plastic_geometry->manually_increment(
+//                    12,
+//                    10);
+//        owner->spec_plastic_geometry->manually_increment(
+//                    12,
+//                    12);
+//        owner->spec_plastic_geometry->manually_increment(
+//                    12,
+//                    12);
     }
 
     if(
-            RisingAnalysis_ptr->is_verbose_on() &&
+        RisingAnalysis_ptr->is_verbose_on() &&
             flag_fired )
     {
         cout
@@ -312,7 +357,8 @@ void Tkratta_crystal_plastic::make_preloop_action(ifstream & s)
 //         // << " SKIPPED now"
 //         << endl ;
 
-
+    spec_geometry_ratios = owner->spec_geometry_ratios;
+    spec_geometry_from_scalers = owner->spec_geometry_from_scalers;
 
 #if PLASTIC_HAS_ENERGY_DATA
     read_cal_factors_into(energy_calibr_factors, name_of_this_element + "_energy_calibr_factors", s );
@@ -323,21 +369,48 @@ void Tkratta_crystal_plastic::make_preloop_action(ifstream & s)
 
     auto *my_kratta = owner->give_crystal(my_id_nr / 4);
 
-    int quarter_x = my_id_nr % 4;
+    quarter_x = my_id_nr % 4;
     int dx = 0; int dy = 0;
-    constexpr int unit = 2;
+    constexpr int unit = 2; // 2;
     switch(quarter_x){
-        case 0: dx = -unit; dy = unit; break;
+        case 0: dx = 0; dy = unit; break;
         case 1: dx = unit; dy = unit; break;
-        case 2: dx = -unit; dy = -unit; break;
-        case 3: dx = unit; dy = -unit; break;
+        case 2: dx = 0; dy = 0; break;
+        case 3: dx = unit; dy = 0; break;
     }
 
-    crystal_position_x = my_kratta->give_x()+dx;
+    crystal_position_x = my_kratta->   give_x()+dx;
     crystal_position_y = my_kratta->give_y()+dy;
     crystal_position_z = my_kratta->give_z();
 
-    ofstream plikG("my_binnings/plastic_geometry.mat.pinuptxt", ios::app);
+    ofstream plikG;
+    // ("my_binnings/plastic_geometry_mat.pinuptxt", ios::app);
+//    if(!plikG){
+//        cout << "Wrong opening of the pinup text file";
+//        exit(1);
+//    }
+//    string short_name = name_of_this_element.substr(name_of_this_element.size() -3);
+//    //string short_name = name_of_this_element.substr(name_of_this_element.size() -1);
+
+//    plikG    << crystal_position_x -10 << "   "
+//             << crystal_position_y
+//             << " " << char(quarter_x + 'a')
+//                //<< (name_of_this_element) // + "_ phi=" +to_string(phi_geom))
+//             << endl;
+
+//    if(quarter_x == 0)
+//        plikG    << crystal_position_x - 10 << "   "
+//                 << crystal_position_y-2
+//                 << " "
+//                 << short_name.substr(0,2)
+//                 << endl;
+
+
+//    plikG.close();
+
+#if 0
+    // Ratios pinup txt ---------------------------------------
+    plikG.open("my_binnings/plastic_geometry_map_ratios.mat.pinuptxt", ios::app);
     if(!plikG){
         cout << "Wrong opening of the pinup text file";
         exit(1);
@@ -345,29 +418,34 @@ void Tkratta_crystal_plastic::make_preloop_action(ifstream & s)
     string short_name = name_of_this_element.substr(name_of_this_element.size() -3);
     //string short_name = name_of_this_element.substr(name_of_this_element.size() -1);
 
-    plikG    << crystal_position_x -10 << "   "
-             << crystal_position_y
-             << " " << char(quarter_x + 'a')
-                //<< (name_of_this_element) // + "_ phi=" +to_string(phi_geom))
-             << endl;
+    // plikG << "// wydruk 1   ---" << name_of_this_element << " ---\n" ;
 
-    if(quarter_x == 0)
-        plikG    << crystal_position_x - 10 << "   "
+    if(quarter_x == 0)    // id nr  of the detector
+        plikG    << crystal_position_x << "   "
                  << crystal_position_y-2
                  << " "
                  << short_name.substr(0,2)
                  << endl;
 
+    // section of the detector
+    plikG    << crystal_position_x << "   "
+             << crystal_position_y
+             << " " << char(quarter_x + 'a')
+                //<< (name_of_this_element) // + "_ phi=" +to_string(phi_geom))
+             << endl;
+
+
 
     plikG.close();
+#endif
 
-    // Ratios
-    plikG.open("my_binnings/plastic_geometry_ratios.mat.pinuptxt", ios::app);
+    //------------------------ do opisu INNEJ macierzy ("from scalers") -------
+    plikG.open("my_binnings/plastic_geometry_map_from_scalers.mat.pinuptxt", ios::app);
     if(!plikG){
         cout << "Wrong opening of the pinup text file";
         exit(1);
     }
-    short_name = name_of_this_element.substr(name_of_this_element.size() -3);
+    string short_name = name_of_this_element.substr(name_of_this_element.size() -3);
     //string short_name = name_of_this_element.substr(name_of_this_element.size() -1);
 
     plikG    << crystal_position_x << "   "
@@ -384,32 +462,7 @@ void Tkratta_crystal_plastic::make_preloop_action(ifstream & s)
                  << endl;
 
 
-    plikG.close();
-
-
-    //------------------------
-    plikG.open("my_binnings/plastic_geometry_from_scalers.mat.pinuptxt", ios::app);
-    if(!plikG){
-        cout << "Wrong opening of the pinup text file";
-        exit(1);
-    }
-    short_name = name_of_this_element.substr(name_of_this_element.size() -3);
-    //string short_name = name_of_this_element.substr(name_of_this_element.size() -1);
-
-    plikG    << crystal_position_x << "   "
-             << crystal_position_y
-             << " " << char(quarter_x + 'a')
-                //<< (name_of_this_element) // + "_ phi=" +to_string(phi_geom))
-             << endl;
-
-    if(quarter_x == 0)
-        plikG    << crystal_position_x << "   "
-                 << crystal_position_y-2
-                 << " "
-                 << short_name.substr(0,2)
-                 << endl;
-
-
+    // plikG << "// wydruk 2 ------\n" ;
     plikG.close();
 
 
@@ -432,7 +485,7 @@ void Tkratta_crystal_plastic::read_gates()
     {
         cout << "Can't open file " << pname << " containing GOOD values of plastic detector " << endl;
         exit(3);
-        return ;
+        // return ;
     }
 
     try{

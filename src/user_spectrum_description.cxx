@@ -29,6 +29,9 @@ user_spectrum_description::user_spectrum_description()
     beg_y = 0;
     end_y = 8192;
     policy_when_increm  = 0 ; // always
+
+    flag_rotation = false;
+    rotation_angle = 0 ;
     condition_name = "No_condition" ;
 
 }
@@ -42,6 +45,9 @@ void user_spectrum_description::read_from(string pathed_name)
 {
     incrementers_x.clear();
     incrementers_y.clear();
+    x_rot_cal_fact.clear();
+    y_rot_cal_fact.clear();
+
 
     string file_name = pathed_name ;
     // path.user_def_spectra + name_of_spectrum + ".user_definition" ;
@@ -125,7 +131,43 @@ void user_spectrum_description::read_from(string pathed_name)
         plik >> condition_name ;
         //cout << "Read condition name = " << condition_name << endl ;
 
+        try  // this may not exist in older definitions
+        {
+            flag_rotation = (bool) Tfile_helper::find_in_file(plik, "flag_rotation");
+            rotation_angle = Tfile_helper::find_in_file(plik, "rotation_angle");
 
+            // read vector of x rotated calibration factors
+            double tmp;
+
+            try{
+            Tfile_helper::spot_in_file(plik, "x_rotated_calibration_factors");
+            for(int i = 0 ; i < 3 ;++i){
+                plik >> tmp;
+                x_rot_cal_fact .push_back(tmp);
+            }
+
+            // read vector of x rotated calibration factors
+            Tfile_helper::spot_in_file(plik, "y_rotated_calibration_factors");
+            for(int i = 0 ; i < 3 ;++i){
+                plik >> tmp;
+                y_rot_cal_fact .push_back(tmp);
+            }
+            } catch(Tfile_helper_exception &m)
+            {
+                x_rot_cal_fact = { 0, 1, 0};
+                y_rot_cal_fact = { 0, 1, 0};
+
+            }
+
+        }
+        catch(Tfile_helper_exception &m)
+        {
+            flag_rotation = false;
+            rotation_angle = 0.0;
+            x_rot_cal_fact = { 0, 1, 0};
+            y_rot_cal_fact = { 0, 1, 0};
+
+        }
 
     }
     catch(Tfile_helper_exception &m)
@@ -139,6 +181,8 @@ void user_spectrum_description::read_from(string pathed_name)
 /** save the definition on the disk */
 void user_spectrum_description::write_definitions(string path_only)
 {
+
+    cout << "This function is never used by the spy" << endl;
     string file_name = path_only + name_of_spectrum + ".user_definition" ;
 
     ofstream plik(file_name.c_str());
@@ -167,6 +211,8 @@ void user_spectrum_description::write_definitions(string path_only)
             << "beg_y\t\t " << beg_y <<  "\t\t// left edge of the first bin\n"
             << "end_y\t\t " << end_y <<  "\t\t// right edge of the last bin\n\n"
 
+            << "flag_rotation\t\t " << flag_rotation <<  "\t\t// left edge of the first bin\n"
+            << "rotation_angle\t\t " << rotation_angle <<  "\t\t// right edge of the last bin\n\n"
             << endl;
 
 
@@ -191,6 +237,16 @@ void user_spectrum_description::write_definitions(string path_only)
          << "\t// 0= always, 1=only when from DIFFERENT detector, 2 = only when from SAME detectror"
          << "\n" ;
 
+
+    plik << "x_rotated_calibration_factors" ;
+    for( auto x : x_rot_cal_fact)
+        plik << "  " << x  ;
+    plik << "\n";
+
+    plik << "y_rotated_calibration_factors" ;
+    for( auto y : y_rot_cal_fact)
+        plik << "  " << y  ;
+    plik << "\n";
 
     if(condition_name.find(".cnd") == string::npos)
     {
@@ -240,6 +296,10 @@ bool user_spectrum_description::are_parameters_identical(const user_spectrum_des
                 beg_y == u.beg_y
                 &&
                 end_y == u.end_y
+                    &&
+                    rotation_angle == u.rotation_angle
+                    &&
+                    flag_rotation == u.flag_rotation
             ) ;
     }
 

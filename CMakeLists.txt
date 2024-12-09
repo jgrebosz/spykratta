@@ -1,15 +1,17 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.20)
 project(spy)
 
-# When DEBUG
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++17 -L./   -pthread -Wall")
+#--------------------------------------------
+# When DEBUG  uncomment this line below
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++17 -L./   -pthread -Wall -no-pie")
 
 # when NODEBUG
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -L./   -pthread -Wall")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -L./   -pthread -Wall -no-pie")
 
-
+#---------------------------------------------
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wno-format-nonliteral"  )
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wno-class-memaccess" )
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op  -pedantic -Wall -Wextra -Wcast-align -Wcast-qual")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept")
@@ -33,16 +35,16 @@ message("my: info PROJECT_SOURCE_DIR points to " ${PROJECT_SOURCE_DIR})
 #this second parameter below was taken from:  root-config --incdir
 include_directories(
 src/
-/home/analiza/root/root/include/
-/usr/include/root
+/home/analiza/root_install/include
 )
+
 
 
 #NOTE: data files are available by JACOBI as /disk/CCB
 
 #TO MAKE  ROOT/NOROOT VERSION - UNCOMMENT ONE OF THE FOLLOWING COMMANDS
 link_directories(/home/analiza/root/root/lib)
-link_directories(/usr/root/lib)
+link_directories(/home/analiza/root_install/lib)
 #   if  CERN_ROOT_INSTALLED == true we can link with root functions
 #link_libraries( ${PROJECT_SOURCE_DIR}/src/libgsievt.a rt Core Cint RIO Net Hist Graf Graf3d Gpad Tree Rint Postscript
 link_libraries( ${PROJECT_SOURCE_DIR}/src/libgsievt.a rt Core RIO Net Hist Graf Graf3d Gpad Tree Rint Postscript
@@ -86,7 +88,7 @@ add_executable(spy src/MainUserAnalysis.cxx src/T32_signal_module.cxx src/TIFJAn
     src/tselfgate_type.cxx src/mbs_listner.cpp
     src/Thector.cxx 
     src/Tparis.cxx
-#    src/Thector_baf.cxx
+#    src/Thector_baf.cxx   because it contains a template
         src/Tkratta.cpp src/Tkratta_crystal.cpp src/Tkratta_crystal_plastic.cpp
         src/Thec_kratta_tree.cpp src/Tself_gate_kratta_descr.cpp
         src/tsignal_processing.cpp
@@ -97,11 +99,14 @@ add_executable(spy src/MainUserAnalysis.cxx src/T32_signal_module.cxx src/TIFJAn
         src/DataDecoder.cpp
         src/v1724.cpp
         src/v1730B.cpp
+         src/v1190.cpp
+         src/v2495s.cpp
         src/LTable.cpp
         src/LTBranch.cpp
         src/Run.cpp
         src/LTRecord.cpp
         src/Tn_silicon_xy.cxx
+        src/v2740.cpp
         )
 
 install(TARGETS spy RUNTIME DESTINATION bin)

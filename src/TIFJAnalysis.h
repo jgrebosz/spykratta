@@ -199,8 +199,7 @@ public:
         {
             cout << "\n432 Error while opening the input file: " << nam << endl;
             cout << "I try to open it from directory " ;
-            //int result =
-            system("pwd");
+            [[__maybe_unused__]] int result = system("pwd");
             exit(2);
         }
         else
@@ -736,6 +735,8 @@ public:
 
     void read_in__user_incrementers();
     void create_user_incrementer(string name_of_description);
+
+    void create_file_with_incrementers();
     //--------------------------------
     void PreLoop()
     {

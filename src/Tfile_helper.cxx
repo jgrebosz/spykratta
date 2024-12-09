@@ -161,8 +161,8 @@ vector<string> File_helper::find_files_in_directory(string dir, string filter)
     if(numer_of_entries < 0)
     {
         perror("scandir");
-        //int result =
-        system(string("mkdir " + dir).c_str());        // <--- meant for people who do not have it yet (old versions of spy)
+        [[__maybe_unused__]] int result =
+         system(string("mkdir " + dir).c_str());        // <--- meant for people who do not have it yet (old versions of spy)
     }
     else
     {

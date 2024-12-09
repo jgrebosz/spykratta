@@ -23,7 +23,7 @@ const int how_many_cate_segments = 9 ;
 #include "Tcate_telescope.h"
 
 
-#if CATE_PRESENT
+
 
 class TIFJEvent;
 class TIFJCalibratedEvent;
@@ -32,6 +32,8 @@ class TIFJCalibratedEvent;
 #include "spectrum.h"
 #include "Tfrs_element.h"
 #include "Tincrementer_donnor.h"
+
+#if CATE_PRESENT
 
 class Tsi_detector;
 //////////////////////////////////////////////////////////////////////

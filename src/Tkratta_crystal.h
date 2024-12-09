@@ -51,6 +51,7 @@ public:
     double give_pd1_time_cal();
 
 
+
     bool check_selfgate(Tself_gate_abstract_descr *desc);
 };
 #endif
@@ -141,8 +142,8 @@ protected:
 
     spectrum_2D* spec_pd0_vs_pd1;
     spectrum_2D* spec_pd1_vs_pd2;
+spectrum_2D* owner_spec_geometry = nullptr;
 
-    static spectrum_2D* spec_geometry;
 
 
 
@@ -214,6 +215,8 @@ public:
     static double pd2_time_cal_upper_threshold;
 
 
+    void read_geometry();
+    string give_name() { return name_of_this_element ;}
 protected: // Protected methods
     void create_my_spectra();
 

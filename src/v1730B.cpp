@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <iomanip>
+#include <iostream>
 
 static v1730B deco;
 
@@ -19,10 +20,10 @@ enum ERRORCODE{
 static int Error(enum ERRORCODE ecode){
     switch(ecode){
         case SubeventBadHeader:
-            printf("V1730B error: Subevent Bad header\n");
+            printf("V1730B error: Subevent bad header\n");
             break;
         case AggregateBadHeader:
-            printf("V1730B error: Aggregate Bad header\n");
+            printf("V1730B error: Aggregate bad header\n");
             break;
         case BadBlockSize:
             printf("V1730B error: Bad block size\n");
@@ -73,8 +74,15 @@ V1730_Subevent::V1730_Subevent(){
 int V1730_Subevent::Load(uint32_t * buf){
     buffer = buf;
     header = (SubeventHeader*)buffer;
-    if(header->tag != 0xA)
+    if(header->tag != 0xA){
+        buffer+=2; 
+        header = (SubeventHeader*)buffer;
+//        printf("Header TAG: 0x%x\n", header->tag);
+        size = 4;
+        DumpRaw(); 
+        ShowHeader();
         return Error(SubeventBadHeader);
+    }
 //     size = buffer[0]& 0x0FFFFFFF;
 //     geo = buffer[1]>>27;
 //     pattern = buffer[1] & 0x7FFF >> 8;
@@ -105,12 +113,12 @@ char * binary(Type word){
 }
 
 void V1730_Subevent::ShowHeader(){
-printf("#GEO: %u\n", geo);
-printf("#Size: %u\n", size);
-printf("#Channel mask: %s\n", binary(channel_mask));
-printf("#Pattern: %s\n",binary(pattern));
-printf("#counter: %u\n", counter);
-printf("#board aggregate time tag: %u\n", time_tag);
+printf("#GEO: %u\n", header->board_id);
+printf("#Size: %u\n", header->size);
+printf("#Channel mask: %s\n", binary(header->channel_mask));
+printf("#Pattern: %s\n",binary(header->pattern));
+printf("#counter: %u\n", header->counter);
+printf("#board aggregate time tag: %u\n", header->time_tag);
 }
 
 void V1730_Subevent::Dump(){
@@ -122,8 +130,10 @@ void V1730_Subevent::Dump(){
 
   }
 void V1730_Subevent::DumpRaw(){
+        printf("size: %d\n", size);
     for(unsigned int i=0; i<size; i++){
-        std::cout << std::hex << std::setw(8) << std::setfill('0')<< buffer[i]<< " (" << std::dec << buffer[i] << ")" << std::endl;
+        printf("0x%08x (%d)\n", buffer[i], buffer[i]);
+//         std::cout << std::hex << std::setw(8) << std::setfill('0')<< buffer[i]<< " (" << std::dec << buffer[i] << ")" << std::endl;
     }
 }
 
@@ -149,7 +159,7 @@ void V1730_Subevent::Reset(){
     memset(channel, 0, sizeof(channel));
 }
 
-v1730B::v1730B():DataDecoder("V1730B"){
+v1730B::v1730B(const char * type):DataDecoder(type){
     Reset();
 }
 
@@ -177,7 +187,8 @@ void v1730B::Reset(){
 int v1730B::Load(void * ptr){
     Reset();
     uint32_t * buffer = (uint32_t*)ptr;
-    Nsubevt = buffer[0];    
+    Nsubevt = buffer[0];
+//     printf("Nsubevt: %d\n",Nsubevt);
     ++buffer;
     for(int i=0; i < Nsubevt; ++i){
             subevt.Reset();

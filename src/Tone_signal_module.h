@@ -1,14 +1,14 @@
 #ifndef _one_signal_module_H_
 #define _one_signal_module_H_
 
-
+#include <cstdint>
 
 
 #include "Tfrs_element.h"
 #include "spectrum.h"
 #include <string>
 
-#include "TIFJEvent.h"
+// #include "TIFJEvent.h"
 #include "Tincrementer_donnor.h"
 
 

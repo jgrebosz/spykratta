@@ -1,54 +1,96 @@
-#define PARIS_OTERWISE_PLASTIC false
-#if PARIS_OTERWISE_PLASTIC
+void rotate(double x, double y, double &xr, double &yr);
+bool prepare_rotation();
+double sinus_omega;
+double cosinus_omega;
+bool flag_rotation_possible {false};
+double fast_vs_slow_rotated_x;
+double fast_vs_slow_rotated_y;
+bool flag_fast_vs_slow_rotated_ok;
+double fast_vs_slow_rotated_x_cal;
+double fast_vs_slow_rotated_y_cal;
+
+###########################################################
+
+
+//*****************************************************************
+template  <typename TOwnerClass>
+void Thector_BaF<TOwnerClass>::rotate(double x, double y, double &xr, double &yr)
+{
+    if(flag_rotation_possible)
+    {
+        xr = (x * cosinus_omega) - (y * sinus_omega);
+        yr = (x * sinus_omega) + ( y * cosinus_omega);
+        flag_fast_vs_slow_rotated_ok = true;
+    }
+    else {
+        xr = 0;
+        yr = 0;
+        //cout << "Rotation impossible" << endl;
+    }
+}
+//*****************************************************************
+template  <typename TOwnerClass>
+bool Thector_BaF<TOwnerClass>::prepare_rotation()
+{
+    // find polygon for the fast_vs_slow_cal matrix
+
+    TjurekPolyCond   *polygon = nullptr;
+    string name =   name_of_this_element + "_fast_vs_slow_polygon_rotation.poly" ;
+    flag_rotation_possible = read_banana(
+                name,
+                &polygon);
+    if(!flag_rotation_possible)
+    {
+        // do it new
+
+
+        // creating it ----------------------------------------
+        ofstream plik(("polygons/" + name).c_str());
+        if(!plik)         exit(1);
 
 
 
-            auto current_board = ltb_paris.FindBoard(visit_ptr->name);
-            // what if the Find was not succesful?
+        double points[8] =
+        {
+            876.126,		326,		 // x, y of the point nr 0	 polygon: rotation
+            1260.15,		1701,		 // x, y of the point nr 1	 polygon: rotation
+            1204.76,		396,		 // x, y of the point nr 2	 polygon: rotation
+            1042.29,		216		 // x, y of the point nr 3	 polygon: rotation
+        };
 
-            double time_in_channel_0 = 0;
-            for(int n = 0 ; n < d.GetNchan() ; ++n)
-            {
-                if(d.Empty(n))
-                    continue;
+        for(int n = 0 ; n < 8 ; n += 2)
+            plik << points[n]  << "\t" << points[n + 1]  << "\n";
 
-                int id_parysa = current_board[n]->GetID();
+        plik.close();
+        // once more we try something what really exit
+        if(! read_banana(name, &polygon))
+        {
+            cout << "Could not create the polygon " << name << " for you " << endl;
+            exit(125);
+        }
 
-                for(int s = 0 ; s < 3; ++s) // we need 3 first data signals (time, short, long)
-                {
-                    auto wart = d.GetData(n, s);
-                    if(wart != 0){
-                        // distributing to the unpacked event
+        flag_LaBr_polygon_possible = true;
 
-
-                        if(s == 0) // Note in case of time signal it should be
-                            //subtracted by the contents of channel 0
-                        {
-                            if(n == 0) { time_in_channel_0 = wart;}
-                            wart -= time_in_channel_0;
-                        }
-
-                        double multiplier = (s != 0)? 0.125 :  100.0;
-                        double offset = (s != 0)? 0 :  1000.0;
+    } // end if flag rotation
 
 
-                        int where = id_parysa + (s * 32);    // which signal:
-                        // because 0-31 is time, 32-63 qshort (fast), 64-96 qlong(slow)
+    // find first vertext and calculate tangens omega = y/x
+    vector<double> vx;
+    vector<double> vy;
+    polygon->give_point_vectors(vx, vy); // references
+    if(vx.size()<2 || vy.size() < 2) {
+        flag_rotation_possible = false;
+        return false;
+    }
 
-                        // Paris takes directly from this array
-                        target_event->digitizer_data[where] = wart * multiplier + offset ;       // int32 array, (for BaF)
-                        target_event->digitizer_int16data[where] = wart * multiplier + offset ;  // short int array (for Tone_signal)
+    double x = vx[1] - vx[0];
+    double y = vy[1] - vy[0];
+    double omega = atan(x / y);
 
-                        //                                              cout << "Channel n =" <<  n
-                        //                                                   << "  (paris_" << id_parysa
-                        //                                                  << "), signal " << s << " ==> value "
-                        //                                                      << wart << "  po korekcji = "
-                        //                                                      <<  wart * multiplier +offset << endl;
+    sinus_omega = sin(omega);
+    cosinus_omega = cos(omega);
+    return true;
+}
 
-
-
-                    }
-                }
-            }
-
+========================================
 

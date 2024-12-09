@@ -106,7 +106,7 @@ private:
     void SetOutputData();
 
 public:
-    v1730B();
+    v1730B(const char * type = "V1730B");
     DataDecoder * Clone(){return new v1730B(*this);}
     void Reset();
     double data[Nchan][Ndata];

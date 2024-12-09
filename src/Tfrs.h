@@ -7,10 +7,10 @@
 // the poiters to the members of the TIFJEvent class
 #ifndef  __CINT__
 
+class Target;
 
 #include <vector>
 #include <string>
-
 #include "Tfrs_element.h"
 #include "Ttarget.h"
 #include "Tframe_simple.h"
@@ -33,6 +33,7 @@
 
 class TIFJAnalysis;
 class Tkratta;
+class Ttarget;
 ///////////////////////////////////////////////////////////////////////////////
 class Tfrs : public Tincrementer_donnor
 {

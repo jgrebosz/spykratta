@@ -35,7 +35,7 @@ private:
     void Reset();
     void SetOutputData();
 public:
-    v1724();
+    v1724(const char * type = "V1724");
     ~v1724();
     DataDecoder * Clone(){return new v1724(*this);}
     virtual int Load(void * buf); // Main decoding function
@@ -46,6 +46,7 @@ public:
     virtual int GetXmax(){return 16368;} // returns max value for data
     virtual int GetNbin(){return 1024;} // returns number of bins
     virtual void Dump();
+    virtual void DumpRaw();
     void ShowHeader();
     int GetSize(){return size;}
     int GetBoardID(){return board_id;}

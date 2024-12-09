@@ -74,6 +74,7 @@ public:
     void analyse_current_event();
     void make_user_event_action(); // shop of events ?
     void make_postloop_action();  // saving the spectra ?
+    void learn_geometry_of_all_elements_of_kratta();
 
     inline double give_distance() {
         return distance ;
@@ -91,11 +92,26 @@ public:
         if(!calculations_already_done)    analyse_current_event();
         return general_pd1_time_cal__when_only_one_good;
     }
+    int give_graph_max_x() { return graph_max_x;}
+    int give_graph_min_x() { return graph_min_x;}
+    int give_graph_max_y() { return graph_max_y;}
+    int give_graph_min_y() { return graph_min_y;}
+
+    spectrum_2D  *spec_geometry; // children will use it
+    spectrum_2D  *spec_plastic_geometry; // children will use it
+    spectrum_2D* spec_geometry_ratios;  // children will use it
+    spectrum_2D* spec_geometry_from_scalers; // children will use it
+
+    void zero_ratios_matrix()
+    {
+        spec_geometry_ratios->zeroing();
+    }
 
     //------------------------------
 protected:
 
     //for testing time
+
 
     void simulate_event();
     /** No descriptions */
@@ -107,6 +123,7 @@ protected:
     int multiplicity_of_good_hits_in_plastic;
 
     spectrum_2D  *matr_kratta_vs_plastic;
+
 
     spectrum_1D * spec_multiplicity;
     spectrum_1D * spec_multiplicity_of_good;
@@ -132,6 +149,17 @@ protected:
     double general_plastic_time_cal__when_only_one_good;
     bool flag_only_one_good_in_plastic;
     spectrum_1D * spec_general_plastic_time_cal__when_only_one_good;
+
+    // sizes of matrices for geometry view
+
+    int graph_max_x = -9999;
+    int graph_min_x = +9999;
+    int graph_max_y = -9999;
+    int graph_min_y = +9999;
+    int graph_margines = 10;
+    int graph_columns = 1;
+    int graph_rows = 1;
+
 };
 //////////////////////////////////////////////////////////////////////////////
 

@@ -31,10 +31,8 @@ public:
     void write_definitions(string path_only);
     /** No descriptions */
     void set_name(string s);
-    string get_name()
-    {
-        return name_of_spectrum ;
-    }
+    string get_name() { return name_of_spectrum ; }
+
     /** To know is somebody just changed some parameters so,
     that we must re-create it (changed dimmension or binning) */
     bool are_parameters_identical(const user_spectrum_description & u) const ;
@@ -82,6 +80,15 @@ public:
         return enabled ;
     }
 
+    bool give_flag_rotation()
+    {
+        return flag_rotation ;
+    }
+    double give_rotation_angle()
+    {
+        return rotation_angle;
+    }
+
     enum type_of_data { spec_1D = 1, spec_2D } ;
 
     vector< pair<string, string> > & give_x_incr()
@@ -92,6 +99,9 @@ public:
     {
         return incrementers_y ;
     }
+    vector< double > & give_x_rot_cal() { return x_rot_cal_fact ;}
+    vector< double > & give_y_rot_cal() { return y_rot_cal_fact ;}
+
 
 protected: // Protected attributes
 
@@ -124,8 +134,13 @@ protected: // Protected attributes
     vector<pair<string, string> > incrementers_y ;
 
     int policy_when_increm ;    // 0 = always
-    // 1 => only when from differnet detector
+    // 1 => only when from different detector
     // 2 => only when from the same detector
+    bool flag_rotation = false;
+    double rotation_angle = 0 ;
+    vector<double> x_rot_cal_fact;
+    vector<double> y_rot_cal_fact;
+
 
     string condition_name ;
 

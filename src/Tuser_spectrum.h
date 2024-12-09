@@ -41,6 +41,13 @@ class Tuser_spectrum
 
     vector<Tincr_entry> x_incr_addresses ;
     vector<Tincr_entry> y_incr_addresses ;
+    
+    bool flag_rotation = false;
+    double rotation_angle = 0.0;
+
+    vector<double> x_rot_cal_factors;
+    vector<double> y_rot_cal_factors;
+
     Tuser_condition * cond_ptr ;
     bool * cond_result_ptr ;
 
@@ -63,6 +70,7 @@ public:
     void set_incrementers();
     void make_incrementations();
     void save_to_disk();
+    void final_clear_some_calculations();
 public: // Public attributes
     /**  */
     void remember_address_of_condition(Tuser_condition *t);

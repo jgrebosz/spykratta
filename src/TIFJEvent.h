@@ -21,7 +21,7 @@
 #include "tjurekabstracteventelement.h"
 
 #include "experiment_def.h"
-#include <vector>
+//#include <vector>
 #include <string>
 #include <fstream>
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +54,7 @@ public:
     // december 2001 experiment
     int begin_for_zeroing ;   //!
 
-    #if 0
+#if 0
     int
     //............................
     // for the new style of object calculation we define
@@ -108,7 +108,7 @@ public:
                  musicBig42_energy[4],
 #endif
 #else    // MUSICBIG_USED
-                 // the eight anode version
+    // the eight anode version
                  music_8_time[8] ,
                  music_8_energy[8],
                  music_8_press_raw ,
@@ -174,7 +174,7 @@ public:
 #ifdef    ACTIVE_STOPPER_PRESENT
 
     int active_stopper[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                      [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
 
     int active_stopper_fired[HOW_MANY_STOPPER_MODULES][2];   //!
 
@@ -185,26 +185,26 @@ public:
 #ifdef ACTIVE_STOPPERS_SECOND_AND_THIRD_HIT_IN_THE_TIME_GATE
 
     int active_stopper_hit2[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                           [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
     int active_stopper_hit2_fired[HOW_MANY_STOPPER_MODULES][2];   //!
 
     int active_stopper_hit3[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                           [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
     int active_stopper_hit3_fired[HOW_MANY_STOPPER_MODULES][2];   //!
 #endif
 
 
 #ifdef ACTIVE_STOPPERS_HAVE_TIME_INFORMATION
     int active_stopper_time[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                           [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
 
 #ifdef ACTIVE_STOPPERS_SECOND_AND_THIRD_HIT_IN_THE_TIME_GATE
 
     int active_stopper_hit2_time[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                                [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
 
     int active_stopper_hit3_time[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                                [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
 #endif
 
 #endif
@@ -212,29 +212,29 @@ public:
 
 #ifdef    ACTIVE_STOPPER2_PRESENT
     int active_stopper2[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                       [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
     int active_stopper2_fired[HOW_MANY_STOPPER_MODULES][2];   //!
 
 #ifdef ACTIVE_STOPPERS_SECOND_AND_THIRD_HIT_IN_THE_TIME_GATE
     int active_stopper2_hit2[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                            [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
     int active_stopper2_hit2_fired[HOW_MANY_STOPPER_MODULES][2];   //!
 
     int active_stopper2_hit3[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                            [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
     int active_stopper2_hit3_fired[HOW_MANY_STOPPER_MODULES][2];   //!
 #endif
 
 
 #ifdef ACTIVE_STOPPERS_HAVE_TIME_INFORMATION
     int active_stopper2_time[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                            [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
 
 #ifdef ACTIVE_STOPPERS_SECOND_AND_THIRD_HIT_IN_THE_TIME_GATE
     int active_stopper2_hit2_time[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                                 [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
     int active_stopper2_hit3_time[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                                 [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
 #endif
 
 #endif
@@ -243,16 +243,16 @@ public:
 #ifdef    ACTIVE_STOPPER3_PRESENT
 
     int active_stopper3[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                       [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
     int active_stopper3_fired[HOW_MANY_STOPPER_MODULES][2];   //!
 
 #ifdef ACTIVE_STOPPERS_SECOND_AND_THIRD_HIT_IN_THE_TIME_GATE
 
     int active_stopper3_hit2[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                            [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
     int active_stopper3_hit2_fired[HOW_MANY_STOPPER_MODULES][2];   //!
     int active_stopper3_hit3[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                            [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
     int active_stopper3_hit3_fired[HOW_MANY_STOPPER_MODULES][2];   //!
 #endif
 
@@ -260,15 +260,15 @@ public:
 #ifdef ACTIVE_STOPPERS_HAVE_TIME_INFORMATION
 
     int active_stopper3_time[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                            [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
 
 #ifdef ACTIVE_STOPPERS_SECOND_AND_THIRD_HIT_IN_THE_TIME_GATE
 
     int active_stopper3_hit2_time[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                                 [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
 
     int active_stopper3_hit3_time[HOW_MANY_STOPPER_MODULES]
-    [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
+                                 [NR_OF_STOPPER_STRIPES_X + NR_OF_STOPPER_STRIPES_Y];
 #endif
 
 #endif
@@ -305,7 +305,7 @@ public:
     int32_t digitizer_data[NR_DIGITIZERS * 3*16];    //(96 because= 32 time + 32Fast + 32 Slow)
     double digitizer_double_data[NR_DIGITIZERS* 3*16];
 
-    //int16_t hector_to_vme_synchro_signal;
+//int16_t hector_to_vme_synchro_signal;
 #endif
 
 
@@ -313,11 +313,12 @@ public:
     int16_t kratta[KRATTA_NR_OF_CRYSTALS][3+3+3] ;   // 0,1,2 - signals, 3,4,5 - pedestals, 6,7,8 - times
     int16_t plastic[KRATTA_NR_OF_PLASTICS]; // [2] ;   // 0 = time   (1 =energy not used)
     int32_t plastic_scalers[KRATTA_NR_OF_PLASTICS];
-    int silicon[NR_OF_SILICONS][3]; // amplitude, time30, time80
-
+    int silicon[NR_OF_SILICONS][2][16][4];  // 0 - time, 1 - amplituta, 2 - pedestal, 3  - rise-time
+    bool silicon_fired[NR_OF_SILICONS];
+    int silicon_signals[NR_OF_SILICONS][2][16][512];
 #endif
 
-    int end_for_zeroing ;  //! dummy member to recognize end for memset function
+        int end_for_zeroing ;  //! dummy member to recognize end for memset function
 
     // below are fields, which should not be zeroed
 

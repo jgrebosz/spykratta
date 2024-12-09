@@ -21,13 +21,13 @@
 
 #include "Tincrementer_donnor.h"
 #include "paths.h"
+extern bool flag_powtorzyc_po_zakonczeniu_innych ;
 
 //user_spectrum_descripion text_desc ;
 //*************************************************************************
 Tuser_spectrum::Tuser_spectrum()
 {
     cond_ptr = 0 ;
-
 }
 //*************************************************************************
 Tuser_spectrum::~Tuser_spectrum()
@@ -38,13 +38,14 @@ Tuser_spectrum::~Tuser_spectrum()
 /** Read the definition prepared in the text file (for example by cracow) */
 void Tuser_spectrum::read_in_parameters(string s)
 {
-
-
     desc.set_name(s);
     desc.read_from(string("./definitions_user_spectra/") + s + ".user_definition") ;
 
     // here we may fill the array of incrementers looking on the map
     set_incrementers();
+    flag_rotation = desc.give_flag_rotation();
+    rotation_angle = desc.give_rotation_angle();
+
 
 }
 
@@ -58,10 +59,10 @@ void Tuser_spectrum::create_the_spectrum()
     if(desc.give_dimmension() == user_spectrum_description::spec_1D)
     {
         spec_ptr = new spectrum_1D(
-            sname,
-            desc.give_bins_x(), desc.give_beg_x(), desc.give_end_x(),
-            folder, "",
-            "To check incrementers - go to the User Defined Spectra manager");
+                    sname,
+                    desc.give_bins_x(), desc.give_beg_x(), desc.give_end_x(),
+                    folder, "",
+                    "To check incrementers - go to the User Defined Spectra manager");
     }
     else
     {
@@ -70,6 +71,47 @@ void Tuser_spectrum::create_the_spectrum()
                                    desc.give_bins_y(), desc.give_beg_y(), desc.give_end_y(),
                                    folder, "",
                                    "To check incrementers in a user spectrum - go to the User Defined Spectra manager");
+        auto sptr = ((spectrum_2D*) spec_ptr);
+
+        sptr->set_flag_rotation(flag_rotation);
+        sptr->set_rotation_angle_degrees(rotation_angle);
+
+        x_rot_cal_factors = desc.give_x_rot_cal();
+        y_rot_cal_factors = desc.give_y_rot_cal();
+
+        sptr->set_rotation_cal_fact(x_rot_cal_factors, y_rot_cal_factors );
+
+        if(flag_rotation)
+        {
+            // preparing incremeners for x_rotated and y_rotated
+            auto ptr = sptr -> give_x_rotated_adress();
+
+
+            named_pointer[sname + "_x_rotated"]
+                    = Tnamed_pointer(
+                        ptr,
+                        0, //a sptr ->address_of_rotation_succ_flag(),
+                        0) ;
+
+
+            ptr = sptr -> give_y_rotated_adress();
+
+
+            named_pointer[sname + "_y_rotated"]
+                    = Tnamed_pointer(
+                        ptr,
+                        0, //a sptr ->address_of_rotation_succ_flag(),
+                        0) ;
+
+
+            //            // sprawdzenie czy przyjete inkrementory
+            //            for(auto x : named_pointer)
+            //            {
+            //                cout << x.first << endl;
+            //            }
+            //            cout << "to wszsytkie do tej pory" << endl ;
+        }
+
     }
     // owner->remember_user_spectrum(spec_ptr) ;
     // NO, the funcion which calls this funciton will take care
@@ -146,11 +188,12 @@ void Tuser_spectrum::set_incrementers()
                  << give_name() << " there is a name of the incrementer (variable):\n"
                  << x_incr[i].first
                  << "\nwhich is not known to the spy.\n"
-                 "Please go to the cracow viewer now, open the definition of this spectrum\n"
-                 "and choose one of the available incrementers"
+                    "Please go to the cracow viewer now, open the definition of this spectrum\n"
+                    "and choose one of the available incrementers"
                  << endl;
 
-            exit(1);
+            flag_powtorzyc_po_zakonczeniu_innych = true;
+            // exit(1);
         }
     }
 
@@ -192,11 +235,13 @@ void Tuser_spectrum::set_incrementers()
                      << " there is a name of the incrementer (variable):\n"
                      << y_incr[i].first
                      << "\nwhich is not known to the spy.\n"
-                     "Please go to the cracow viewer now, open the definition of this spectrum\n"
-                     "and choose one of the available incrementers"
+                        "Please go to the cracow viewer now, open the definition of this spectrum\n"
+                        "and choose one of the available incrementers"
                      << endl;
 
-                exit(1);
+                flag_powtorzyc_po_zakonczeniu_innych = true;
+                // exit(1);
+
             }
         }
 
@@ -207,7 +252,7 @@ void Tuser_spectrum::set_incrementers()
 void Tuser_spectrum::make_incrementations()
 {
 
-    //  cout << "Spectrum " << desc.get_name() << "  checking" << endl;
+    //cout << "Spectrum " << desc.get_name() << "  checking" << endl;
 
 
     //  if(cond_result_ptr)
@@ -218,10 +263,10 @@ void Tuser_spectrum::make_incrementations()
     //   }
 
     if(
-        (cond_result_ptr && (*cond_result_ptr == false)) // condition for this spectrum is false
-        ||
+            (cond_result_ptr && (*cond_result_ptr == false)) // condition for this spectrum is false
+            ||
 
-        !desc.spectrum_enabled())   // or matrix is disabled
+            !desc.spectrum_enabled())   // or matrix is disabled
     {
         return ;
     }
@@ -245,6 +290,11 @@ void Tuser_spectrum::save_to_disk()
     spec_ptr->save_to_disk();
 }
 //*******************************************************************
+void Tuser_spectrum::final_clear_some_calculations()
+{
+    spec_ptr->clear_rotation_calculations();
+}
+//*******************************************************************
 void Tuser_spectrum::remember_address_of_condition(Tuser_condition *t)
 {
     cond_ptr = t ;
@@ -262,9 +312,9 @@ void Tuser_spectrum::remember_address_of_condition(Tuser_condition *t)
 void Tuser_spectrum::make_incr_of_1D_spectrum()
 {
 
-//      cout
-//        << "make_incr_of_1D_spectrum() loop on x_incr_addresses.size() = "
-//        << x_incr_addresses.size() << endl;
+    //      cout
+    //        << "make_incr_of_1D_spectrum() loop on x_incr_addresses.size() = "
+    //        << x_incr_addresses.size() << endl;
 
     for(unsigned i = 0 ; i < x_incr_addresses.size() ; i++)
     {
@@ -290,9 +340,9 @@ void Tuser_spectrum::make_incr_of_1D_spectrum()
                 if(x_incr_addresses[i].self_gate_descr_ptr->not_for_1Dspectrum())
                 {
                     cout << "NOTE: The self gate called "
-                         //<< x_incr_addresses[i].self_gate_descr_ptr->name
+                            //<< x_incr_addresses[i].self_gate_descr_ptr->name
                          << "  has settings option 'time difference between 2 gammas' as  ON "
-                         "which is  nonsense in case of 1D spectrum: " << give_name()
+                            "which is  nonsense in case of 1D spectrum: " << give_name()
                          << endl;
                 }
                 if(!x_incr_addresses[i].nam_ptr.ptr_detector->
@@ -303,15 +353,15 @@ void Tuser_spectrum::make_incr_of_1D_spectrum()
             }
 
 
-//                int mmm = x_incr_addresses[i].nam_ptr.what_type ;
+            //                int mmm = x_incr_addresses[i].nam_ptr.what_type ;
 
-//               cout << "== Incremet USER spectrum " << this->give_name()  <<endl;
+            //               cout << "== Incremet USER spectrum " << this->give_name()  <<endl;
 
             switch(x_incr_addresses[i].nam_ptr.what_type)
             {
             case Tnamed_pointer::is_double:
                 spec_ptr->manually_increment(*(x_incr_addresses[i].nam_ptr.double_ptr));
-//                 cout << "DDDDD incremented with double value " << (*(x_incr_addresses[i].nam_ptr.double_ptr)) << endl;
+                //                 cout << "DDDDD incremented with double value " << (*(x_incr_addresses[i].nam_ptr.double_ptr)) << endl;
                 break;
 
             case   Tnamed_pointer::is_int:
@@ -555,25 +605,25 @@ void Tuser_spectrum::find_y_to_increment_with(double x_value, void *det_address)
             {
             case 0:  // always
 
-//             flag_talking_histograms = true;
-//                 cout << "User spectrum will increment at : "
-//                 << x_value << ", " << y_value << endl;
+                //             flag_talking_histograms = true;
+                //                 cout << "User spectrum will increment at : "
+                //                 << x_value << ", " << y_value << endl;
 
-                ((spectrum_2D*)(spec_ptr))->manually_increment(x_value, y_value);
-//             flag_talking_histograms = false;
+                ((spectrum_2D*)(spec_ptr))->manually_increment_angle(x_value, y_value);
+                //             flag_talking_histograms = false;
                 break;
 
             case 1:  // only when different
                 if(det_address != (y_incr_addresses[i].nam_ptr.ptr_detector))
                 {
-                    ((spectrum_2D*)(spec_ptr))->manually_increment(x_value, y_value);
+                    ((spectrum_2D*)(spec_ptr))->manually_increment_angle(x_value, y_value);
                 }
                 break;
 
             case 2:  // only when the same
                 if(det_address == (y_incr_addresses[i].nam_ptr.ptr_detector))
                 {
-                    ((spectrum_2D*)(spec_ptr))->manually_increment(x_value, y_value);
+                    ((spectrum_2D*)(spec_ptr))->manually_increment_angle(x_value, y_value);
                 }
                 break;
             } // switch
@@ -644,20 +694,20 @@ void Tuser_spectrum::find_y_to_increment_with(double x_value, void *det_address)
                 switch(desc.give_policy())
                 {
                 case 0:  // always
-                    ((spectrum_2D*)(spec_ptr))->manually_increment(x_value, y_value);
+                    ((spectrum_2D*)(spec_ptr))->manually_increment_angle(x_value, y_value);
                     break;
 
                 case 1:  // only when different
                     if(det_address !=  y_incr_addresses[i].nam_ptr.vek[m].v_ptr_detector)
                     {
-                        ((spectrum_2D*)(spec_ptr))->manually_increment(x_value, y_value);
+                        ((spectrum_2D*)(spec_ptr))->manually_increment_angle(x_value, y_value);
                     }
                     break;
 
                 case 2:  // only when the same
                     if(det_address ==  y_incr_addresses[i].nam_ptr.vek[m].v_ptr_detector)
                     {
-                        ((spectrum_2D*)(spec_ptr))->manually_increment(x_value, y_value);
+                        ((spectrum_2D*)(spec_ptr))->manually_increment_angle(x_value, y_value);
                     }
                     break;
                 } // switch
@@ -678,7 +728,7 @@ Tself_gate_abstract_descr*  Tuser_spectrum::address_of_self_gate(string sg_name)
 {
     // finding in the map such a selfgate
     map<string, Tself_gate_abstract_descr* >::iterator pos =
-        map_of_selfgates.find(sg_name);
+            map_of_selfgates.find(sg_name);
 
     if(pos != map_of_selfgates.end())
     {
@@ -700,7 +750,7 @@ Tself_gate_abstract_descr*  Tuser_spectrum::address_of_self_gate(string sg_name)
     try {
         d = Tself_gate_abstract_descr::create_descr_for_sg_file(sg_name);
     }
-    catch(runtime_error e)
+    catch(runtime_error &e)
     {
         cerr << "ERROR: During creation of user defined spectrum called "
              << desc.get_name() << "\n   "  << e.what()      << endl;
@@ -712,9 +762,8 @@ Tself_gate_abstract_descr*  Tuser_spectrum::address_of_self_gate(string sg_name)
 /***************************************************************************/
 void Tuser_spectrum::clear_selfgates_map()
 {
-
     map<string, Tself_gate_abstract_descr* >::iterator it =
-        map_of_selfgates.begin();
+            map_of_selfgates.begin();
 
     for(; it != map_of_selfgates.end() ; it++)
     {

@@ -20,6 +20,8 @@
 //#include "Go4Event/TGo4EventElement.h"
 #include <cstring>
 #include <cstdlib>
+#include <cstdint>
+
 #include "tjurekabstracteventprocessor.h"
 
 #include "TjurekMbsSubEvent.h"
@@ -707,7 +709,7 @@ public:
     std::string find_proper_lookuptable_name(string ltb_name,
                                              string current_path_for_lookup_table,
                                              string data_file_name);
-
+    vector<string>  remove_names_without_extension_ltb(vector<string>   v);
 protected:
     spectrum_1D *spec_ger_minus_frs_timestamp_diff;
     spectrum_1D *spec_frs_minus_hec_timestamp_diff;
@@ -1457,6 +1459,8 @@ void unpack_V775(Tvisitcard *visit_ptr);
 void unpack_V879_878(Tvisitcard *visit_ptr);
 void unpack_V785(Tvisitcard *visit_ptr);
 void unpack_V830(Tvisitcard *visit_ptr);
+void unpack_V1190(Tvisitcard *visit_ptr);
+void unpack_V2740(Tvisitcard *visit_ptr);
 
 //  ClassDef(TIFJEventProcessor,1)
 };

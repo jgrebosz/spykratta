@@ -34,7 +34,7 @@ class Tpisolo_delta_e : public Tfrs_element, public Tincrementer_donnor
     // in the moment of running the analysis.
 
     int (TIFJEvent::*deltaE_event)[HOW_MANY_DELTA_E];
-    int (TIFJEvent::*dE_res_event);
+    int TIFJEvent::*dE_res_event;
 
     spectrum_1D * spec_dE_raw[HOW_MANY_DELTA_E] ;
     spectrum_1D * spec_dE_cal[HOW_MANY_DELTA_E] ;

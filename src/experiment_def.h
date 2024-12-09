@@ -3,6 +3,8 @@
 #ifndef EXPDEF_H
 #define EXPDEF_H
 
+//#include <cstdint>
+
 // To make Debug/NoDebug version go to the Project->Open Configuration
 // To make ROOT / NOROOT - version -->go to the CmakeLists.txt file
 
@@ -32,11 +34,9 @@
 // #define CURRENT_EXPERIMENT_TYPE       EXOTIC_EXPERIMENT
 //#define CURRENT_EXPERIMENT_TYPE       PISOLO2_EXPERIMENT
 // #define CURRENT_EXPERIMENT_TYPE       PRISMA_EXPERIMENT
+
 #define CURRENT_EXPERIMENT_TYPE 	IFJ_KRATTA_HECTOR_EXPERIMENT
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
 
 
 
@@ -54,10 +54,10 @@
 //constexpr int KRATTA_NROW = 4;
 //constexpr int KRATTA_NCOL = 4;
 
-constexpr int KRATTA_NR_OF_CRYSTALS = 40;        //{KRATTA_NROW * KRATTA_NCOL};
+constexpr int KRATTA_NR_OF_CRYSTALS = 40;   // 40;
 constexpr int KRATTA_NR_OF_PLASTICS = KRATTA_NR_OF_CRYSTALS * 4;
 
-constexpr int NR_OF_SILICONS = 32;
+constexpr int NR_OF_SILICONS = 4;   // 32;
 
 constexpr int PLASTIC_HOW_MANY_TDC_ADC_CHANNELS  {64 };
 constexpr int NR_DIGITIZERS = 4; // (0-3) -> max nr of digitizers

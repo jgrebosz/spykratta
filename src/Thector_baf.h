@@ -11,14 +11,14 @@
 #define THECTOR_BAF_H
 
 #include "experiment_def.h" 
-// #ifdef HECTOR_PRESENT
+//#ifdef HECTOR_BAF_PRESENT
 
 
 //#include "Thector.h"
 #include "spectrum.h"
 
 // #include <TVector3.h>
-#include <Vectors.h>
+#include "Vectors.h"
 #include "Tincrementer_donnor.h"
 #include "TIFJAnalysis.h" // for verbose
 extern TIFJAnalysis *  RisingAnalysis_ptr ;
@@ -108,6 +108,7 @@ protected:
   spectrum_2D
     * matr_fast_vs_slow,  
     * matr_fast_vs_slow_rotated,
+  * matr_fast_vs_slow_rotated_TST,
     * matr_fast_vs_slow_cal,
     * matr_fast_over_slow_vs_time,           // Adam invented this   
     * matr_slow_minus_fast_over_slow_cal,           // Basia invented this
@@ -263,8 +264,8 @@ protected:
 };
 //////////////////////////////////////////////////////////////////////////////
 
-#include <Thector_baf.cxx>
+#include <Thector_baf.cxx>  // must be present because a template is there
 
-//#endif  // HECTOR_PRESENT
+//#endif  // THECTOR_BAF_H
 
-#endif
+#endif // THECTOR_BAF_H

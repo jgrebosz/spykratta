@@ -10,7 +10,7 @@ static inline int GetBit(uint32_t  word, int bit){
     return (word >> bit) & 0x1;
 }
 
-v1724::v1724():DataDecoder("V1724"){
+v1724::v1724(const char * type):DataDecoder(type){
   Reset();
 }
 
@@ -62,7 +62,7 @@ int v1724::Load(void * buf){
     
     SetUpChannels();
     SetOutputData();
-//     Dump();
+    if(strcmp(type, "V1724B") == 0) DumpRaw();
     return size;
 }
 
@@ -91,6 +91,13 @@ void  v1724::SetUpChannels(){
       }
 }
 
+void v1724::DumpRaw(){
+    printf("\n");
+    uint32_t * p = (uint32_t *)header;
+    for( uint32_t * i = p; i< p+4; i++)
+        printf("%08x\n", *i);
+    
+}
 void v1724::Dump(){
       ShowHeader();
       printf("#Module %d\n",board_id);

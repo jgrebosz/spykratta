@@ -82,8 +82,10 @@ Tfrs::Tfrs(TIFJAnalysis *ptr, std::string name)               // constructor
     // module.push_back((new Thector("hector") ));
     module.push_back((new Tparis("paris")));
 
-    module.push_back(new Tn_silicon_xy<32> ("dedal"));
-
+    module.push_back(new Tn_silicon_xy<16> ("drac0", 0) );
+    module.push_back(new Tn_silicon_xy<16> ("drac1", 1) );
+    module.push_back(new Tn_silicon_xy<16> ("drac2", 2) );
+    module.push_back(new Tn_silicon_xy<16> ("drac3", 3) );
 
 #if CURRENT_EXPERIMENT_TYPE==PRISMA_EXPERIMENT
 

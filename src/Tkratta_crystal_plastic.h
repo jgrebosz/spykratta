@@ -12,6 +12,8 @@
 
 #ifdef KRATTA_PLASTIC_PRESENT
 
+
+
 #define PLASTIC_HAS_ENERGY_DATA false
 
 /**KRATTA detector consists of many elementary detectors   */
@@ -76,9 +78,9 @@ protected:
     spectrum_1D* spec_time_raw;
     spectrum_1D* spec_time_cal;
 
-    static spectrum_2D* spec_geometry;
-    static spectrum_2D* spec_geometry_ratios;
-    static spectrum_2D* spec_geometry_from_scalers;
+    spectrum_2D* spec_geometry = nullptr;
+    spectrum_2D* spec_geometry_ratios = nullptr;
+    spectrum_2D* spec_geometry_from_scalers = nullptr;
 
 public:
 
@@ -88,19 +90,19 @@ public:
 
     void make_preloop_action(ifstream & );
     void analyse_current_event();
+    auto give_xpos() { return crystal_position_x; }
+    auto give_ypos() { return crystal_position_y; }
+    string give_name() { return name_of_this_element ;}
 
     void incr_ratios_matrix(int value)
     {
         spec_geometry_ratios->manually_increment_by(crystal_position_x, crystal_position_y, value);
     }
-    static void zero_ratios_matrix()
-    {
-        spec_geometry_ratios->zeroing();
-    }
+
 
     void incr_geometry_from_scalers_matrix(int value)
     {
-        spec_geometry_from_scalers->manually_increment_by(crystal_position_x, crystal_position_y, value);
+          spec_geometry_from_scalers->manually_increment_by(crystal_position_x, crystal_position_y, value);
     }
 
    /** where in the event starts data for this particular kratta_crystal */
@@ -132,7 +134,10 @@ public:
     static double time_cal_lower_threshold;
     static double time_cal_upper_threshold;
 
-
+    int quarter_x;
+    int give_quarter() {
+            return quarter_x;
+        }
 
 
 protected: // Protected methods
@@ -143,7 +148,8 @@ protected: // Protected attributes
 
 
     /** Whis segment (numbering 0-n) */
-    //int segment_nr;
+ //int quarter;
+
 //    int pos_x;   // geometric position of this crystal
 //    int pos_y;
 
