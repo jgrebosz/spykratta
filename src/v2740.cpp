@@ -87,7 +87,7 @@ void v2740::Dump(){
 
     for(int j=0; j<header->n_samples; j++){
         for(int ich=0; ich<Nchan; ich++){
-            printf("%hu\t", channel[ich] ? channel[ich] : 0);
+            printf("%hu\t",  (channel[ich] ? channel[ich] : 0 ) );
         }
         printf("\n");
     }
