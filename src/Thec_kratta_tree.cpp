@@ -76,7 +76,7 @@ void Thec_kratta_tree::make_preloop_action(ifstream &)  // read the calibration 
 
             root_filename += "_RAW_tree.root" ;
 //             TFile* f = new TFile("\\scieżka\\nazwa.root", "recreate"); - podwójne ukośniki, gdyż są one reinterpretowane.
-            hfile = new TFile(root_filename.c_str(), "RECREATE");
+            // hfile = new TFile(root_filename.c_str(), "RECREATE");
             // this line must be below, and it will automatically attach to the TFile
             tree = new TTree(string("Hector_Kratta_RAW_tree").c_str() , "A ROOT tree");
             flag_file_and_tree_already_opened = true;

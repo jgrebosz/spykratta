@@ -62,8 +62,8 @@ constexpr int NR_OF_SILICONS = 4;   // 32;
 constexpr int PLASTIC_HOW_MANY_TDC_ADC_CHANNELS  {64 };
 constexpr int NR_DIGITIZERS = 4; // (0-3) -> max nr of digitizers
 
-//#define CERN_ROOT_INSTALLED  false
-#define CERN_ROOT_INSTALLED  true
+#define CERN_ROOT_INSTALLED  false
+// #define CERN_ROOT_INSTALLED  true
     
 #define USER_INCREMENTERS_ENABLED
 
